@@ -55,7 +55,7 @@ export default function GoalDetail() {
 
   // Calculate progress percent
   const deltaTarget = Math.abs(goal.target - goal.baseline)
-  const deltaCurrent = Math.abs(goal.current - goal.baseline)
+  const deltaCurrent = Math.abs(goal.currentValue - goal.baseline)
   const progressPercent = deltaTarget === 0 ? 0 : Math.min(100, Math.round((deltaCurrent / deltaTarget) * 100))
 
   return (
@@ -107,7 +107,7 @@ export default function GoalDetail() {
               </div>
               <div className="p-2 bg-background/50 border border-border rounded-xl">
                 <span className="text-[9px] uppercase font-bold text-textSecondary">Current</span>
-                <p className="text-xs font-bold text-primary mt-0.5">{goal.current}</p>
+                <p className="text-xs font-bold text-primary mt-0.5">{goal.currentValue}</p>
               </div>
               <div className="p-2 bg-background/50 border border-border rounded-xl">
                 <span className="text-[9px] uppercase font-bold text-textSecondary">Target</span>
