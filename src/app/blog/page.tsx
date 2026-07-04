@@ -36,8 +36,8 @@ export default function BlogPage() {
   const loadArticles = async (cat: string, q: string) => {
     setLoading(true)
     try {
-      const { apiClient } = require('@/services/api-client')
-      const response = await apiClient.get(`/blog?category=${cat}&q=${q}`)
+      const { publicApiClient } = require('@/services/api-client')
+      const response = await publicApiClient.get(`/blog?category=${cat}&q=${q}`)
       const rawList = response.data?.data || response.data || []
       setArticles(Array.isArray(rawList) ? rawList : [])
     } catch (e) {

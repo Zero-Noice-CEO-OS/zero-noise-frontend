@@ -29,8 +29,8 @@ export default function BlogDetailPage() {
 
   const loadArticle = async () => {
     try {
-      const { apiClient } = require('@/services/api-client')
-      const response = await apiClient.get(`/blog/${slug}`)
+      const { publicApiClient } = require('@/services/api-client')
+      const response = await publicApiClient.get(`/blog/${slug}`)
       const artData = response.data?.data || response.data
       setArticle(artData || null)
     } catch (e) {

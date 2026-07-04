@@ -14,6 +14,13 @@ export const apiClient = axios.create({
   },
 });
 
+export const publicApiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 let accessToken: string | null = null;
 let refreshPromise: Promise<{ accessToken: string }> | null = null;
 
