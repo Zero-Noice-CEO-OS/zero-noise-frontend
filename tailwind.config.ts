@@ -6,20 +6,41 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: '#1F3A5F',
-        accent: '#2E6F6E',
-        surface: { light: '#F4F6F8', dark: '#1A1D22' },
-        text: { primary: '#1A1A1A', muted: '#6B7280' },
-        success: '#2E7D32',
-        warning: '#B98900',
-        destructive: '#C0392B',
-        border: { light: '#E2E5E9', dark: '#2A2E35' },
-        bg: { dark: '#0F1115' },
+        background: 'var(--background)',
+        surface: 'var(--surface)',
+        card: 'var(--card)',
+        primary: 'var(--primary)',
+        'primary-hover': 'var(--primary-hover)',
+        accent: 'var(--accent)',
+        secondary: 'var(--secondary)',
+        border: 'var(--border)',
+        textPrimary: 'var(--text-primary)',
+        textSecondary: 'var(--text-secondary)',
+        success: 'var(--success)',
+        warning: 'var(--warning)',
+        danger: 'var(--danger)',
       },
-      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
-      borderRadius: { card: '8px', modal: '12px' },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        button: '14px',
+        card: '18px',
+        input: '12px',
+        modal: '24px',
+        badge: '999px',
+      },
+      boxShadow: {
+        card: 'var(--shadow-card)',
+        hover: 'var(--shadow-hover)',
+        modal: 'var(--shadow-modal)',
+      },
+      lineHeight: {
+        cozy: '150%',
+      },
     },
   },
   plugins: [],
 }
 export default config
+
