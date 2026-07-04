@@ -1,6 +1,4 @@
 /** @type {import('next').NextConfig} */
-const isProd = process.env.NODE_ENV === 'production';
-
 const nextConfig = {
   output: 'export',
   trailingSlash: true,
@@ -9,8 +7,8 @@ const nextConfig = {
     unoptimized: true,
   },
 
-  basePath: isProd ? '/zero-noise-frontend' : '',
-  assetPrefix: isProd ? '/zero-noise-frontend/' : '',
+  basePath: '/zero-noise-frontend',
+  assetPrefix: '/zero-noise-frontend/',
 };
 
 module.exports = nextConfig;

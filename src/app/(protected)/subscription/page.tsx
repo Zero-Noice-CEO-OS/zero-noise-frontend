@@ -68,6 +68,14 @@ export default function SubscriptionPage() {
   const email = profileQuery.data?.email || ''
   const mobileNumber = (profileQuery.data as any)?.mobileNumber || ''
 
+  const getApiBaseUrl = () => {
+    let apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      apiBase = 'https://zero-noise-backend.onrender.com/api/v1';
+    }
+    return apiBase;
+  }
+
   const loadSubscriptionInfo = async () => {
     try {
       const data = await subscriptionService.getDetails()
@@ -399,7 +407,7 @@ export default function SubscriptionPage() {
                     </td>
                     <td className="py-3 text-right">
                       <a
-                        href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/subscriptions/invoice/${inv.id}`}
+                        href={`${getApiBaseUrl()}/subscriptions/invoice/${inv.id}`}
                         download
                         className="text-xs font-bold text-primary hover:underline"
                       >
