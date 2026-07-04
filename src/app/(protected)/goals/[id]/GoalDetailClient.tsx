@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Edit2, Trash2, Calendar, Target, TrendingUp, CheckCircle } from 'lucide-react'
 import Modal from '@/components/Modal'
-import { useGoal, useGoalActivities, useArchiveGoalMutation } from '@/hooks/useGoals'
+import { useGoal, useArchiveGoalMutation } from '@/hooks/useGoals'
 
 export default function GoalDetail() {
   const params = useParams()
@@ -16,11 +16,10 @@ export default function GoalDetail() {
 
   // Queries & Mutations
   const goalQuery = useGoal(id)
-  const activitiesQuery = useGoalActivities(id)
   const archiveMutation = useArchiveGoalMutation()
 
   const goal = goalQuery.data
-  const activities = activitiesQuery.data?.data || []
+  const activities = goal?.activities || []
 
   const handleArchive = async () => {
     try {
