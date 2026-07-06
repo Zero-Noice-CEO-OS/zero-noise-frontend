@@ -42,6 +42,8 @@ export function useStartDeepWorkMutation() {
       queryClient.invalidateQueries({ queryKey: ['deepWorkAnalytics'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardToday'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardWeek'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
     },
   });
 }
@@ -85,6 +87,8 @@ export function useCompleteDeepWorkMutation() {
       queryClient.invalidateQueries({ queryKey: ['deepWorkAnalytics'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardToday'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardWeek'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
     },
   });
 }

@@ -23,6 +23,7 @@ export default function DeepWork() {
   // Completion Form State
   const [interruptions, setInterruptions] = useState<number>(0)
   const [outputNotes, setOutputNotes] = useState('')
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // Queries & Mutations
   const activeSessionQuery = useActiveSession()
@@ -48,7 +49,7 @@ export default function DeepWork() {
         const pausedMins = session.pausedDurationMinutes || 0;
         const pausedSeconds = pausedMins * 60;
         const activeElapsed = Math.max(0, totalElapsed - pausedSeconds);
-        const remaining = Math.max(0, plannedSeconds - activeElapsed);
+        const remaining = plannedSeconds - activeElapsed;
         setSeconds(remaining);
         setRunning(true);
       } else if (session.status === 'PAUSED') {
@@ -59,7 +60,7 @@ export default function DeepWork() {
         const pausedMins = session.pausedDurationMinutes || 0;
         const pausedSeconds = pausedMins * 60;
         const activeElapsed = Math.max(0, totalElapsedAtPause - pausedSeconds);
-        const remaining = Math.max(0, plannedSeconds - activeElapsed);
+        const remaining = plannedSeconds - activeElapsed;
         setSeconds(remaining);
       }
     } else {
@@ -72,7 +73,7 @@ export default function DeepWork() {
   useEffect(() => {
     if (running) {
       interval.current = setInterval(() => {
-        setSeconds((s) => Math.max(0, s - 1));
+        setSeconds((s) => s - 1);
       }, 1000);
     } else if (interval.current) {
       clearInterval(interval.current);
@@ -83,10 +84,27 @@ export default function DeepWork() {
   }, [running]);
 
   const formatTime = (s: number) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    const isNegative = s < 0;
+    const absSeconds = Math.abs(s);
+    const h = Math.floor(absSeconds / 3600);
+    const m = Math.floor((absSeconds % 3600) / 60);
+    const sec = absSeconds % 60;
+    const formatted = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    return isNegative ? `-${formatted}` : formatted;
+  };
+
+  const getElapsedSeconds = () => {
+    if (!activeSessionQuery.data) return 0;
+    const session = activeSessionQuery.data;
+    const startTime = new Date(session.startedAt).getTime();
+    const totalElapsed = Math.floor((Date.now() - startTime) / 1000);
+    const pausedMins = session.pausedDurationMinutes || 0;
+    const pausedSeconds = pausedMins * 60;
+    let extraPausedSeconds = 0;
+    if (session.status === 'PAUSED' && session.lastPausedAt) {
+      extraPausedSeconds = Math.floor((Date.now() - new Date(session.lastPausedAt).getTime()) / 1000);
+    }
+    return Math.max(0, totalElapsed - (pausedSeconds + extraPausedSeconds));
   };
 
   const handleStart = async () => {
@@ -158,6 +176,10 @@ export default function DeepWork() {
           id: activeSessionQuery.data.id,
           data: { interruptions: nextVal }
         })
+        setToastMessage('✓ Interruption logged.')
+        setTimeout(() => {
+          setToastMessage(null)
+        }, 3000)
       } catch (e) {
         console.error(e)
       }
@@ -207,7 +229,7 @@ export default function DeepWork() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 mt-8">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mt-8 w-full max-w-sm px-4">
         {!activeSessionQuery.data ? (
           /* Start Config Options Panel */
           <div className="w-full space-y-4 max-w-sm">
@@ -287,38 +309,38 @@ export default function DeepWork() {
             </button>
           </div>
         ) : (
-          <>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
             {activeSessionQuery.data.status === 'PAUSED' || !running ? (
               <button
                 onClick={handleResume}
                 disabled={resumeMutation.isPending}
-                className="px-5 py-3 rounded-button bg-surface border border-border text-textPrimary text-sm font-bold flex items-center gap-1.5 hover:bg-background/80 transition-all"
+                className="flex-1 h-11 px-3 rounded-button bg-surface border border-border text-textPrimary text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-background/80 transition-all"
               >
-                <Play size={16} strokeWidth={2.2} /> Resume
+                <Play size={14} strokeWidth={2.2} /> Resume
               </button>
             ) : (
               <button
                 onClick={handlePause}
                 disabled={pauseMutation.isPending}
-                className="px-5 py-3 rounded-button bg-surface border border-border text-textPrimary text-sm font-bold flex items-center gap-1.5 hover:bg-background/80 transition-all"
+                className="flex-1 h-11 px-3 rounded-button bg-surface border border-border text-textPrimary text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-background/80 transition-all"
               >
-                <Pause size={16} strokeWidth={2.2} /> Pause
+                <Pause size={14} strokeWidth={2.2} /> Pause
               </button>
             )}
             <button
               onClick={handleLogInterruption}
               disabled={updateMutation.isPending}
-              className="px-5 py-3 rounded-button bg-accent text-white text-sm font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-md"
+              className="flex-1 h-11 px-3 rounded-button bg-accent text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-md"
             >
               ⚠️ Log Interruption
             </button>
             <button
               onClick={handleStopClick}
-              className="px-5 py-3 rounded-button bg-danger text-white text-sm font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-md"
+              className="flex-1 h-11 px-3 rounded-button bg-danger text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-md"
             >
-              <Square size={16} strokeWidth={2.2} /> Complete
+              <Square size={14} strokeWidth={2.2} /> Complete
             </button>
-          </>
+          </div>
         )}
       </div>
     </div>
@@ -488,7 +510,7 @@ export default function DeepWork() {
       <Modal open={summaryOpen} onClose={() => setSummaryOpen(false)} title="Session Summary">
         <form className="space-y-4" onSubmit={handleCompleteSubmit}>
           <div className="text-center py-2">
-            <p className="text-3xl font-extrabold text-primary font-mono">{formatTime(seconds)}</p>
+            <p className="text-3xl font-extrabold text-primary font-mono">{formatTime(getElapsedSeconds())}</p>
             <p className="text-xs text-textSecondary mt-1">Total session duration</p>
           </div>
           <div className="space-y-1.5">
@@ -524,6 +546,19 @@ export default function DeepWork() {
           </div>
         </form>
       </Modal>
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-[#10B981] text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5"
+          >
+            {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -153,7 +153,7 @@ export default function Goals() {
             {goals.map(goal => {
               const displayProgress = Math.min(100, Math.max(0, Math.round(goal.progress)))
               return (
-                <Link key={goal.id} href={`/goals/${goal.id}`}>
+                <Link key={goal.id} href={`/goals/detail/?id=${goal.id}`}>
                   <motion.div
                     layout
                     initial={{ opacity: 0, y: 10 }}

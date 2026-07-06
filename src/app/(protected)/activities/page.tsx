@@ -96,7 +96,7 @@ export default function Activities() {
     ...sortParams
   }
   const activitiesQuery = useActivities(queryParams)
-  const summaryQuery = useActivitySummary()
+  const summaryQuery = useActivitySummary({ from, to })
   const { data: goalsData } = useGoals({ status: 'Active' })
 
   // Mutations
@@ -370,7 +370,7 @@ export default function Activities() {
                       {a.goalId && (() => {
                         const linkedGoal = Array.isArray(goalsData?.data) ? goalsData.data.find((g: any) => g.id === a.goalId) : null;
                         return (
-                          <Link href={`/goals/${a.goalId}`} className="text-[8px] font-extrabold uppercase px-2 py-0.5 rounded-badge border border-primary/25 bg-primary/10 text-primary hover:bg-primary/20 transition-all">
+                          <Link href={`/goals/detail/?id=${a.goalId}`} className="text-[8px] font-extrabold uppercase px-2 py-0.5 rounded-badge border border-primary/25 bg-primary/10 text-primary hover:bg-primary/20 transition-all">
                             🎯 {linkedGoal ? linkedGoal.title : 'Goal'}
                           </Link>
                         );

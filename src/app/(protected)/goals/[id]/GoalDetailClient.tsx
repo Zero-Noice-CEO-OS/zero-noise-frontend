@@ -2,15 +2,16 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Edit2, Trash2, Calendar, Target, TrendingUp, CheckCircle } from 'lucide-react'
 import Modal from '@/components/Modal'
 import { useGoal, useArchiveGoalMutation } from '@/hooks/useGoals'
 
 export default function GoalDetail() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const router = useRouter()
-  const id = params.id as string
+  const id = (params?.id as string) || (searchParams?.get('id') as string)
 
   const [deleteOpen, setDeleteOpen] = useState(false)
 
@@ -71,7 +72,7 @@ export default function GoalDetail() {
         </div>
         <div className="flex gap-2">
           <Link
-            href={`/goals/${id}/edit`}
+            href={`/goals/edit/?id=${id}`}
             className="px-4 py-2.5 rounded-button bg-surface border border-border text-textPrimary font-bold text-xs hover:bg-background/80 transition-all flex items-center gap-1.5 shadow-sm"
           >
             <Edit2 size={13} /> Edit Goal

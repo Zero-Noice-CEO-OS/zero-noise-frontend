@@ -151,7 +151,7 @@ export default function Topbar() {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 5 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-11 w-80 bg-surface dark:bg-surface border border-border rounded-modal shadow-modal py-3 z-50 overflow-hidden"
+                  className="absolute right-0 top-11 w-[calc(100vw-32px)] md:w-80 bg-surface dark:bg-surface border border-border rounded-modal shadow-modal py-3 z-50 overflow-hidden"
                 >
                   <div className="flex items-center justify-between px-4 pb-2 border-b border-border">
                     <span className="text-xs font-bold text-textPrimary uppercase tracking-wider">Notifications</span>

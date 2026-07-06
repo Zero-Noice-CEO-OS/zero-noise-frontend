@@ -16,6 +16,8 @@ const PREDEFINED_SKILLS = [
 export default function Skills() {
   const [addOpen, setAddOpen] = useState(false)
   const [name, setName] = useState('')
+  const [customName, setCustomName] = useState('')
+  const [error, setError] = useState('')
   const [baselineScore, setBaselineScore] = useState<number>(5)
 
   // Queries & Mutations
@@ -32,17 +34,30 @@ export default function Skills() {
   )
 
   const handleOpenAdd = () => {
-    setName(availableSkills[0] || '')
+    setName(availableSkills[0] || 'Other')
+    setCustomName('')
+    setError('')
     setBaselineScore(5)
     setAddOpen(true)
   }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return
+    const finalName = name === 'Other' ? customName.trim() : name.trim()
+    if (!finalName) {
+      setError('Skill name is required')
+      return
+    }
+    const isDuplicate = skills.some((s: any) => s.name.toLowerCase() === finalName.toLowerCase() && !s.archived)
+    if (isDuplicate) {
+      setError('You are already tracking this skill')
+      return
+    }
     try {
-      await createMutation.mutateAsync({ name, baselineScore })
+      await createMutation.mutateAsync({ name: finalName, baselineScore })
       setName('')
+      setCustomName('')
+      setError('')
       setBaselineScore(5)
       setAddOpen(false)
     } catch (err) {
@@ -122,7 +137,7 @@ export default function Skills() {
             const mockSparkline = [skill.baselineScore, skill.baselineScore + 0.2, skill.baselineScore + 0.3, skill.currentScore - 0.2, skill.currentScore]
 
             return (
-              <Link key={skill.id} href={`/skills/${skill.id}`}>
+              <Link key={skill.id} href={`/skills/detail/?id=${skill.id}`}>
                 <motion.div
                   whileHover={{ y: -3 }}
                   className="bg-surface/50 border border-border rounded-card p-6 shadow-card hover:shadow-hover hover:border-primary/20 transition-all duration-300 flex flex-col justify-between h-[230px] group relative overflow-hidden animate-fade-in"
@@ -181,17 +196,36 @@ export default function Skills() {
             <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Skill Name</label>
             <select
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value)
+                setError('')
+              }}
               className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
             >
               {availableSkills.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
-              {availableSkills.length === 0 && (
-                <option value="">No skills available (all tracked)</option>
-              )}
+              <option value="Other">Other...</option>
             </select>
           </div>
+          {name === 'Other' && (
+            <div className="space-y-1.5 animate-fade-in">
+              <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Custom Skill Name</label>
+              <input
+                required
+                value={customName}
+                onChange={(e) => {
+                  setCustomName(e.target.value)
+                  setError('')
+                }}
+                placeholder="e.g. Public Speaking"
+                className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+              />
+            </div>
+          )}
+          {error && (
+            <p className="text-[10px] font-bold text-[#EF4444]">{error}</p>
+          )}
           <div className="space-y-1.5">
             <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Baseline Score (1-10)</label>
             <input

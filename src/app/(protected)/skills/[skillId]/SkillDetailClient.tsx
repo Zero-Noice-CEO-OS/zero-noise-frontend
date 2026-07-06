@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Plus, Calendar } from 'lucide-react'
 import Modal from '@/components/Modal'
 import { useSkill, useSkillEntries, useLogSkillEntryMutation } from '@/hooks/useSkills'
 
 export default function SkillDetail() {
   const params = useParams()
-  const skillId = params.skillId as string
+  const searchParams = useSearchParams()
+  const skillId = (params?.skillId as string) || (searchParams?.get('id') as string)
 
   const [logOpen, setLogOpen] = useState(false)
   
