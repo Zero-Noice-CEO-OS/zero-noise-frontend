@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import {
   CheckCircle2,
   Sparkles,
@@ -50,6 +51,7 @@ export default function ReviewsHub() {
   const [tomorrowPriorities, setTomorrowPriorities] = useState('')
   const [energy, setEnergy] = useState<number>(7)
   const [quickNote, setQuickNote] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
 
   // Filter reviews by tab
   const reviews = reviewsQuery.data?.data || []
@@ -107,6 +109,7 @@ export default function ReviewsHub() {
           energy
         }
       })
+      setIsEditing(false)
       reviewsQuery.refetch()
     } catch (err) {
       console.error(err)
@@ -191,7 +194,7 @@ export default function ReviewsHub() {
           <div className="lg:col-span-2 space-y-6">
             
             {/* If NOT generated/locked for the day - Display Reflection Questionnaire */}
-            {!currentDailyReview ? (
+            {!currentDailyReview || isEditing ? (
               <form onSubmit={handleDailySubmit} className="bg-surface/50 border border-border rounded-card p-6 shadow-card space-y-6">
                 <div className="flex items-center justify-between border-b border-border/40 pb-4">
                   <div>
@@ -275,6 +278,15 @@ export default function ReviewsHub() {
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-border/40">
+                  {isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(false)}
+                      className="px-4 py-2 rounded-button bg-surface border border-border text-textSecondary text-xs font-bold hover:bg-background/80 transition-all"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
                   <button type="button" onClick={() => { setWins(''); setMisses(''); }} className="px-4 py-2 rounded-button bg-surface border border-border text-textPrimary text-xs font-bold hover:bg-background/80 transition-all">Save Draft</button>
                   <button
                     type="submit"
@@ -346,26 +358,18 @@ export default function ReviewsHub() {
                     <span className="italic text-primary">&ldquo;{(currentDailyReview.recommendations as any)?.motivationalMessage || 'Keep focusing!'}&rdquo;</span>
                   </div>
                 </div>
-
                 {/* Display Locked Reflection Answers */}
                 <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card space-y-4">
                   <div className="flex items-center justify-between border-b border-border/40 pb-3">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-textPrimary">Your Reflection</h3>
-                    <button
-                      onClick={async () => {
-                        // Delete review to unlock and edit
-                        if (confirm('Unlock this reflection to edit? The generated AI summary will be updated.')) {
-                          await generateReviewMutation.mutateAsync({
-                            type: 'Daily',
-                            date: selectedDate,
-                            reflectionData: { wins, misses, achievement, challenge, lessons, tomorrowPriorities, energy }
-                          })
-                        }
-                      }}
-                      className="text-xs text-primary font-bold hover:underline"
-                    >
-                      View/Edit
-                    </button>
+                    {selectedDate === todayStr && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="text-xs text-primary font-bold hover:underline"
+                      >
+                        Edit Reflection
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div>
@@ -495,21 +499,28 @@ export default function ReviewsHub() {
                   const logDate = log.date.split('T')[0]
                   const isActive = selectedDate === logDate
                   return (
-                    <button
+                    <div
                       key={log.id}
-                      onClick={() => setSelectedDate(logDate)}
                       className={`w-full flex items-center justify-between py-2 border-b border-border last:border-0 text-left transition-all ${
-                        isActive ? 'text-primary scale-102 font-bold' : 'hover:opacity-85'
+                        isActive ? 'text-primary scale-102 font-bold' : ''
                       }`}
                     >
-                      <div>
+                      <button
+                        onClick={() => setSelectedDate(logDate)}
+                        className="flex-1 text-left"
+                      >
                         <p className="text-xs font-bold text-textPrimary">{logDate}</p>
                         <p className="text-[10px] text-textSecondary">Energy: {(log.recommendations as any).stats?.energy || 7}/10</p>
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/reviews/detail?id=${log.id}`} className="text-[9px] text-primary hover:underline font-bold bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
+                          Details &rarr;
+                        </Link>
+                        <span className="text-[10px] bg-primary/10 border border-primary/20 text-primary px-2.5 py-0.5 rounded-full font-extrabold">
+                          CEO Score: {(log.recommendations as any).stats?.ceoScore ?? 70}
+                        </span>
                       </div>
-                      <span className="text-[10px] bg-primary/10 border border-primary/20 text-primary px-2.5 py-0.5 rounded-full font-extrabold">
-                        CEO Score: {(log.recommendations as any).stats?.ceoScore ?? 70}
-                      </span>
-                    </button>
+                    </div>
                   )})}
                 {dailyReviews.length === 0 && (
                   <p className="text-xs text-textSecondary italic text-center py-4">No logged reflections.</p>

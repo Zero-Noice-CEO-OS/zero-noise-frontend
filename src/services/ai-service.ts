@@ -21,18 +21,23 @@ export const aiService = {
     return response.data;
   },
 
-  async getMorningCoachAdvice(): Promise<CoachAdviceResponse> {
-    const response = await apiClient.post<CoachAdviceResponse>('/ai/morning', { date: getLocalDateString() });
+  async getMorningCoachAdvice(): Promise<any> {
+    const response = await apiClient.post<any>('/ai/morning', { date: getLocalDateString() });
     return response.data;
   },
 
-  async getDailyReviewAdvice(): Promise<CoachAdviceResponse> {
-    const response = await apiClient.post<CoachAdviceResponse>('/ai/review', { date: getLocalDateString() });
+  async getDailyReviewAdvice(): Promise<any> {
+    const response = await apiClient.post<any>('/ai/review', { date: getLocalDateString() });
     return response.data;
   },
 
-  async getStrategicAdvice(customQuestion: string): Promise<CoachAdviceResponse> {
-    const response = await apiClient.post<CoachAdviceResponse>('/ai/strategic', { customQuestion });
+  async getStrategicAdvice(customQuestion?: string): Promise<any> {
+    const response = await apiClient.post<any>('/ai/strategic', { customQuestion });
+    return response.data;
+  },
+
+  async getUsage(): Promise<{ count: number; limit: number }> {
+    const response = await apiClient.get('/ai/usage');
     return response.data;
   },
 
