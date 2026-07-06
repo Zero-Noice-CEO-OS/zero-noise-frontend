@@ -63,7 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthReady(false);
       if (typeof window !== 'undefined') {
         localStorage.removeItem('session_active');
-        window.location.href = '/login';
+        const basePath = window.location.pathname.startsWith('/zero-noise-frontend') ? '/zero-noise-frontend' : '';
+        window.location.href = `${basePath}/login`;
       }
     }
   };
@@ -79,15 +80,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let active = true;
     const initAuth = async () => {
+      const sessionActive = typeof window !== 'undefined' && localStorage.getItem('session_active') === 'true';
+      if (!sessionActive) {
+        console.log('[Auth] No active session found. Initializing as anonymous user.');
+        if (active) {
+          setAccessToken(null);
+          setUserState(null);
+          setIsLoading(false);
+          setAuthReady(true);
+        }
+        return;
+      }
+
       try {
         console.log('[Auth] Starting session initialization...');
         const refreshRes = await authService.refresh();
         console.log('[Auth] Refresh successful.');
         if (active) {
           setAccessToken(refreshRes.accessToken);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('session_active', 'true');
-          }
+          localStorage.setItem('session_active', 'true');
           const meRes = await apiClient.get<User>('/users/me');
           setUserState(meRes.data);
           console.log('[Auth] Session restored.');

@@ -37,8 +37,11 @@ export const setAccessToken = (token: string | null) => {
 
 export const getAccessToken = () => accessToken;
 
-// A single unified lock for any refresh operations
 export const executeRefreshToken = async (): Promise<{ accessToken: string }> => {
+  if (typeof window !== 'undefined' && localStorage.getItem('session_active') !== 'true') {
+    throw new Error('NO_REFRESH_TOKEN');
+  }
+
   if (refreshPromise) {
     return refreshPromise;
   }
@@ -100,12 +103,13 @@ apiClient.interceptors.response.use(
       if (!sessionActive) {
         setAccessToken(null);
         if (onAuthFailure) onAuthFailure();
+        const basePath = typeof window !== 'undefined' && window.location.pathname.startsWith('/zero-noise-frontend') ? '/zero-noise-frontend' : '';
         if (
           typeof window !== 'undefined' &&
-          !window.location.pathname.startsWith('/login') &&
-          !window.location.pathname.startsWith('/signup')
+          !window.location.pathname.startsWith(`${basePath}/login`) &&
+          !window.location.pathname.startsWith(`${basePath}/signup`)
         ) {
-          window.location.href = '/login';
+          window.location.href = `${basePath}/login`;
         }
         return Promise.reject(error);
       }
@@ -118,12 +122,13 @@ apiClient.interceptors.response.use(
       } catch (refreshError: any) {
         setAccessToken(null);
         if (onAuthFailure) onAuthFailure();
+        const basePath = typeof window !== 'undefined' && window.location.pathname.startsWith('/zero-noise-frontend') ? '/zero-noise-frontend' : '';
         if (
           typeof window !== 'undefined' &&
-          !window.location.pathname.startsWith('/login') &&
-          !window.location.pathname.startsWith('/signup')
+          !window.location.pathname.startsWith(`${basePath}/login`) &&
+          !window.location.pathname.startsWith(`${basePath}/signup`)
         ) {
-          window.location.href = '/login';
+          window.location.href = `${basePath}/login`;
         }
         return Promise.reject(refreshError);
       }
