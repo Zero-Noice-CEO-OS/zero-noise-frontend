@@ -8,7 +8,10 @@ import Modal from '@/components/Modal'
 import { useAuth } from '@/context/AuthContext'
 import { useDashboardSummary, useDashboardToday, useDashboardWeek, useDashboardAnalytics } from '@/hooks/useDashboard'
 import { useCreateActivityMutation, useActivitySummary } from '@/hooks/useActivities'
+import { useMorningCheckInMutation } from '@/hooks/useDailyLogs'
+import { useSkills } from '@/hooks/useSkills'
 import NoiseAlert from '@/components/NoiseAlert'
+import { Smile, Meh, Frown } from 'lucide-react'
 
 export default function Dashboard() {
   const [activityModal, setActivityModal] = useState(false)
@@ -20,6 +23,19 @@ export default function Dashboard() {
   const createActivityMutation = useCreateActivityMutation()
   const { user } = useAuth()
   const [avatar, setAvatar] = useState<string | null>(null)
+
+  // Morning Check-in States
+  const [morningModal, setMorningModal] = useState(false)
+  const [morningEnergy, setMorningEnergy] = useState<number>(7)
+  const [p1, setP1] = useState('')
+  const [p2, setP2] = useState('')
+  const [p3, setP3] = useState('')
+  const [mainSkill, setMainSkill] = useState('')
+  const [risks, setRisks] = useState('')
+  const [morningSuccess, setMorningSuccess] = useState(false)
+
+  const morningMutation = useMorningCheckInMutation()
+  const { data: skillsData } = useSkills()
 
   useState(() => {
     if (typeof window !== 'undefined' && user) {
@@ -42,6 +58,36 @@ export default function Dashboard() {
         setActivityModal(false)
         setSaveSuccess(false)
         setActTitle('')
+      }, 1000)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleMorningSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const topPriorities = [p1, p2, p3].filter(p => p.trim() !== '')
+    try {
+      const offset = new Date().getTimezoneOffset()
+      const localDate = new Date(new Date().getTime() - offset * 60 * 1000)
+      const dateStr = localDate.toISOString().split('T')[0]
+      
+      await morningMutation.mutateAsync({
+        date: dateStr,
+        energy: morningEnergy,
+        topPriorities,
+        mainSkill: mainSkill || 'Focus Execution',
+        risks: risks || undefined
+      })
+      setMorningSuccess(true)
+      setTimeout(() => {
+        setMorningModal(false)
+        setMorningSuccess(false)
+        setP1('')
+        setP2('')
+        setP3('')
+        setMainSkill('')
+        setRisks('')
       }, 1000)
     } catch (err) {
       console.error(err)
@@ -357,9 +403,12 @@ export default function Dashboard() {
               ) : (
                 <div className="py-8 text-center space-y-3">
                   <p className="text-xs text-textSecondary font-semibold">Morning check-in is pending.</p>
-                  <Link href="/reviews" className="inline-block px-3 py-1.5 text-[10px] font-bold text-white bg-primary rounded-button shadow-sm">
+                  <button
+                    onClick={() => setMorningModal(true)}
+                    className="inline-block px-3 py-1.5 text-[10px] font-bold text-white bg-primary rounded-button shadow-sm hover:opacity-90 active:scale-95 transition-all"
+                  >
                     Complete Check-in
-                  </Link>
+                  </button>
                 </div>
               )}
             </div>
@@ -592,6 +641,103 @@ export default function Dashboard() {
                 className="px-4 py-2 rounded-button bg-gradient-to-r from-primary to-secondary text-white text-xs font-bold hover:opacity-90 transition-all shadow-md disabled:opacity-50"
               >
                 {createActivityMutation.isPending ? 'Saving...' : 'Save Activity'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Morning Check-in Modal */}
+      <Modal open={morningModal} onClose={() => setMorningModal(false)} title="Morning Check-in">
+        {morningSuccess ? (
+          <div className="p-8 text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-success/15 border border-success/30 flex items-center justify-center text-success text-lg mx-auto">✓</div>
+            <h3 className="text-sm font-bold text-textPrimary">Morning Check-in Saved!</h3>
+            <p className="text-xs text-textSecondary">Your daily intentions are locked in. Execute with clarity.</p>
+          </div>
+        ) : (
+          <form onSubmit={handleMorningSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">State of mind / Energy Level ({morningEnergy}/10)</label>
+              <div className="flex gap-2">
+                {[
+                  { val: 9, icon: Smile, label: 'Optimal (9)', color: 'text-success bg-success/10 border-success/30' },
+                  { val: 7, icon: Meh, label: 'Steady (7)', color: 'text-primary bg-primary/10 border-primary/20' },
+                  { val: 4, icon: Frown, label: 'Drained (4)', color: 'text-danger bg-danger/10 border-danger/20' },
+                ].map((m) => (
+                  <button
+                    type="button"
+                    key={m.val}
+                    onClick={() => setMorningEnergy(m.val)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-button border text-xs font-bold transition-all ${
+                      morningEnergy === m.val
+                        ? `${m.color} ring-2 ring-primary/20 scale-[1.02]`
+                        : 'bg-surface text-textSecondary border-border hover:bg-background/80'
+                    }`}
+                  >
+                    <m.icon size={15} />
+                    {m.label.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Top priorities for today (1 - 3 objectives)</label>
+              <input
+                required
+                value={p1}
+                onChange={e => setP1(e.target.value)}
+                className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                placeholder="Priority 1 (Required)"
+              />
+              <input
+                value={p2}
+                onChange={e => setP2(e.target.value)}
+                className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                placeholder="Priority 2 (Optional)"
+              />
+              <input
+                value={p3}
+                onChange={e => setP3(e.target.value)}
+                className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                placeholder="Priority 3 (Optional)"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="space-y-1.5">
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Target Practice Skill</label>
+                <select
+                  value={mainSkill}
+                  onChange={e => setMainSkill(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                >
+                  <option value="">No Skill Selected</option>
+                  {Array.isArray(skillsData?.data) && skillsData.data.map((s: any) => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Identified Risks</label>
+                <input
+                  value={risks}
+                  onChange={e => setRisks(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                  placeholder="e.g. blockers, meeting fatigue"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-6 border-t border-border/40 mt-6">
+              <button type="button" onClick={() => setMorningModal(false)} className="px-4 py-2 rounded-button bg-surface border border-border text-textPrimary text-xs font-bold hover:bg-background/80 transition-all">Cancel</button>
+              <button
+                type="submit"
+                disabled={morningMutation.isPending}
+                className="px-4 py-2 rounded-button bg-gradient-to-r from-primary to-secondary text-white text-xs font-bold hover:opacity-90 transition-all shadow-md disabled:opacity-50"
+              >
+                {morningMutation.isPending ? 'Saving...' : 'Submit Intentions'}
               </button>
             </div>
           </form>

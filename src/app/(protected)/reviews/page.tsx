@@ -1,16 +1,32 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CheckCircle2, Sparkles, Smile, Meh, Frown, Award, Flame, RefreshCw, Send } from 'lucide-react'
+import {
+  CheckCircle2,
+  Sparkles,
+  Smile,
+  Meh,
+  Frown,
+  Award,
+  Flame,
+  RefreshCw,
+  Send,
+  Lock,
+  ChevronRight,
+  TrendingUp,
+  Target,
+  Zap,
+  BookOpen
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useDailyLogByDate, useDailyLogsHistory, useMorningCheckInMutation, useEveningReviewMutation } from '@/hooks/useDailyLogs'
 import { useReviews, useGenerateReviewMutation } from '@/hooks/useReviews'
 import { useSkills } from '@/hooks/useSkills'
+import { useDashboardToday } from '@/hooks/useDashboard'
 
 export default function ReviewsHub() {
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'monthly'>('daily')
-  
-  // Date tracking (today's string formatted YYYY-MM-DD in local time)
+
+  // Local Time YYYY-MM-DD Date tracker
   const getLocalDateString = (d = new Date()) => {
     const offset = d.getTimezoneOffset()
     const local = new Date(d.getTime() - offset * 60 * 1000)
@@ -20,84 +36,78 @@ export default function ReviewsHub() {
   const todayStr = getLocalDateString()
   const [selectedDate, setSelectedDate] = useState(todayStr)
 
-  // Queries & Mutations
-  const todayLogQuery = useDailyLogByDate(selectedDate)
-  const historyQuery = useDailyLogsHistory({ page: 1, limit: 10 })
-  const morningMutation = useMorningCheckInMutation()
-  const { data: skillsData } = useSkills()
-  const eveningMutation = useEveningReviewMutation()
-
-  // Reviews list queries
-  const weeklyReviewsQuery = useReviews({ type: 'Weekly', limit: 5 })
-  const monthlyReviewsQuery = useReviews({ type: 'Monthly', limit: 5 })
+  // Fetch reviews list & generator mutation
+  const reviewsQuery = useReviews({ limit: 100 })
   const generateReviewMutation = useGenerateReviewMutation()
+  const todayOverviewQuery = useDashboardToday() // today's actual stats from backend
 
-  // Morning Check-in Form States
-  const [energy, setEnergy] = useState<number>(7)
-  const [p1, setP1] = useState('')
-  const [p2, setP2] = useState('')
-  const [p3, setP3] = useState('')
-  const [mainSkill, setMainSkill] = useState('')
-  const [risks, setRisks] = useState('')
-
-  // Evening Review Form States
+  // Form States for Daily Review Reflection
   const [wins, setWins] = useState('')
   const [misses, setMisses] = useState('')
+  const [achievement, setAchievement] = useState('')
+  const [challenge, setChallenge] = useState('')
   const [lessons, setLessons] = useState('')
   const [tomorrowPriorities, setTomorrowPriorities] = useState('')
+  const [energy, setEnergy] = useState<number>(7)
+  const [quickNote, setQuickNote] = useState('')
 
-  // Set default values when todayLogQuery changes
+  // Filter reviews by tab
+  const reviews = reviewsQuery.data?.data || []
+  const dailyReviews = reviews.filter(r => r.type === 'Daily')
+  const weeklyReviews = reviews.filter(r => r.type === 'Weekly')
+  const monthlyReviews = reviews.filter(r => r.type === 'Monthly')
+
+  // Find if selectedDate already has a submitted Daily Review
+  const currentDailyReview = dailyReviews.find(r => {
+    try {
+      return r.date.split('T')[0] === selectedDate
+    } catch {
+      return false
+    }
+  })
+
+  // Load draft reflection answers if review exists
   useEffect(() => {
-    if (todayLogQuery.data) {
-      setEnergy(todayLogQuery.data.energy || 7)
-      setWins(todayLogQuery.data.wins || '')
-      setMisses(todayLogQuery.data.misses || '')
-      setLessons(todayLogQuery.data.lessons || '')
-      setTomorrowPriorities(todayLogQuery.data.tomorrowPriorities || '')
+    if (currentDailyReview) {
+      const recs = currentDailyReview.recommendations as any
+      if (recs && recs.reflection) {
+        setWins(recs.reflection.wins || '')
+        setMisses(recs.reflection.misses || '')
+        setAchievement(recs.reflection.achievement || '')
+        setChallenge(recs.reflection.challenge || '')
+        setLessons(recs.reflection.lessons || '')
+        setTomorrowPriorities(recs.reflection.tomorrowPriorities || '')
+        setEnergy(recs.stats?.energy || 7)
+      }
     } else {
-      setEnergy(7)
-      setP1('')
-      setP2('')
-      setP3('')
-      setMainSkill('')
-      setRisks('')
+      // Clear forms for new entries
       setWins('')
       setMisses('')
+      setAchievement('')
+      setChallenge('')
       setLessons('')
       setTomorrowPriorities('')
+      setEnergy(7)
     }
-  }, [todayLogQuery.data, selectedDate])
+  }, [currentDailyReview, selectedDate])
 
-  const handleMorningSubmit = async (e: React.FormEvent) => {
+  const handleDailySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const topPriorities = [p1, p2, p3].filter(p => p.trim() !== '')
     try {
-      await morningMutation.mutateAsync({
+      await generateReviewMutation.mutateAsync({
+        type: 'Daily',
         date: selectedDate,
-        energy,
-        topPriorities,
-        mainSkill: mainSkill || 'Focus Execution',
-        risks: risks || undefined
-      })
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const handleEveningSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      await eveningMutation.mutateAsync({
-        dateStr: selectedDate,
-        data: {
+        reflectionData: {
           wins,
           misses,
+          achievement,
+          challenge,
           lessons,
-          tomorrowPriorities
+          tomorrowPriorities,
+          energy
         }
       })
-      // Automatically trigger a Daily review generation to populate AI Advice
-      await generateReviewMutation.mutateAsync({ type: 'Daily', date: selectedDate })
+      reviewsQuery.refetch()
     } catch (err) {
       console.error(err)
     }
@@ -106,6 +116,7 @@ export default function ReviewsHub() {
   const handleWeeklyGenerate = async () => {
     try {
       await generateReviewMutation.mutateAsync({ type: 'Weekly', date: todayStr })
+      reviewsQuery.refetch()
     } catch (e) {
       console.error(e)
     }
@@ -114,16 +125,27 @@ export default function ReviewsHub() {
   const handleMonthlyGenerate = async () => {
     try {
       await generateReviewMutation.mutateAsync({ type: 'Monthly', date: todayStr })
+      reviewsQuery.refetch()
     } catch (e) {
       console.error(e)
     }
   }
 
-  // reflections meta info
-  const totalEntries = historyQuery.data?.meta?.total ?? 0
+  // Calculate actual stats for today from the overview query
+  const todayStats = {
+    ceoScore: todayOverviewQuery.data?.ceoScore ?? 70,
+    energy: energy,
+    deepWorkMinutes: todayOverviewQuery.data?.deepWorkSummary?.totalMinutes ?? 0,
+    activitiesCount: todayOverviewQuery.data?.activitiesSummary?.count ?? 0,
+    goalsAdvanced: todayOverviewQuery.data?.skillPractice?.length ? 1 : 0
+  }
 
-  const latestWeeklyReview = weeklyReviewsQuery.data?.data?.[0]
-  const latestMonthlyReview = monthlyReviewsQuery.data?.data?.[0]
+  const formatMinutes = (mins: number) => {
+    if (!mins) return '0h 0m'
+    const h = Math.floor(mins / 60)
+    const m = mins % 60
+    return `${h}h ${m}m`
+  }
 
   return (
     <div className="space-y-8 pb-16">
@@ -136,7 +158,7 @@ export default function ReviewsHub() {
       {/* Tabs */}
       <div className="flex gap-2 border-b border-border">
         {[
-          { id: 'daily', label: 'Daily Journal' },
+          { id: 'daily', label: 'Daily Reflection' },
           { id: 'weekly', label: 'Weekly Summary' },
           { id: 'monthly', label: 'Monthly Audit' }
         ].map((tab) => {
@@ -161,306 +183,352 @@ export default function ReviewsHub() {
         })}
       </div>
 
-      {/* Daily Reflection Journal */}
+      {/* Tab 1: Daily Reflection */}
       {activeTab === 'daily' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Journal Form */}
+          
+          {/* Left/Middle: Reflection Content */}
           <div className="lg:col-span-2 space-y-6">
-            {todayLogQuery.isLoading ? (
-              <div className="bg-surface/50 border border-border rounded-card p-12 flex flex-col items-center justify-center min-h-[300px]">
-                <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                <p className="text-xs text-textSecondary font-bold mt-4 uppercase tracking-wider">Syncing log info...</p>
-              </div>
-            ) : !todayLogQuery.data ? (
-              /* Morning Check-in Form */
-              <form
-                onSubmit={handleMorningSubmit}
-                className="bg-surface/50 border border-border rounded-card p-6 shadow-card space-y-6"
-              >
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-bold text-textPrimary uppercase tracking-wider">Morning Check-in</h2>
-                  <span className="text-xs font-bold text-textSecondary bg-surface/80 px-3 py-1 rounded-full border border-border">
+            
+            {/* If NOT generated/locked for the day - Display Reflection Questionnaire */}
+            {!currentDailyReview ? (
+              <form onSubmit={handleDailySubmit} className="bg-surface/50 border border-border rounded-card p-6 shadow-card space-y-6">
+                <div className="flex items-center justify-between border-b border-border/40 pb-4">
+                  <div>
+                    <h2 className="text-sm font-bold text-textPrimary uppercase tracking-wider">End-of-Day Reflection</h2>
+                    <p className="text-[10px] text-textSecondary mt-1">Answer honestly to extract clean execution scores.</p>
+                  </div>
+                  <span className="text-xs font-extrabold text-textSecondary bg-surface/85 px-3.5 py-1.5 rounded-full border border-border">
                     Date: {selectedDate}
                   </span>
                 </div>
-                
-                {/* Mood Indicator / Energy Slider */}
-                <div className="space-y-2">
-                  <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">State of mind / Energy Level ({energy}/10)</label>
-                  <div className="flex flex-wrap gap-2.5">
-                    {[
-                      { id: 'great', label: 'Optimal (9)', val: 9, icon: Smile, color: 'text-success bg-success/10 border-success/30' },
-                      { id: 'good', label: 'Steady (7)', val: 7, icon: Meh, color: 'text-primary bg-primary/10 border-primary/20' },
-                      { id: 'meh', label: 'Drained (4)', val: 4, icon: Frown, color: 'text-danger bg-danger/10 border-danger/20' },
-                    ].map((m) => (
-                      <button
-                        type="button"
-                        key={m.id}
-                        onClick={() => setEnergy(m.val)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-button border text-xs font-bold transition-all ${
-                          (m.val === 9 && energy >= 8) || (m.val === 7 && energy === 7) || (m.val === 4 && energy <= 6)
-                            ? `${m.color} ring-2 ring-primary/20 scale-[1.02] shadow-sm`
-                            : 'bg-surface text-textSecondary border-border hover:bg-background/80'
-                        }`}
-                      >
-                        <m.icon size={16} />
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
-                <div className="space-y-3.5">
-                  <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Top priorities for today (1 - 3 objectives)</label>
-                  <div className="space-y-2">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">What went well today?</label>
+                    <textarea
+                      required
+                      value={wins}
+                      onChange={(e) => setWins(e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                      rows={2}
+                      placeholder="Identified wins, shipped modules, resolved issues..."
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">What didn't go well?</label>
+                    <textarea
+                      required
+                      value={misses}
+                      onChange={(e) => setMisses(e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                      rows={2}
+                      placeholder="Distractions, dependency blockers, skipped tasks..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Biggest achievement</label>
+                      <input
+                        required
+                        value={achievement}
+                        onChange={(e) => setAchievement(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                        placeholder="Single major highlight"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Biggest challenge</label>
+                      <input
+                        required
+                        value={challenge}
+                        onChange={(e) => setChallenge(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                        placeholder="Key blocker or friction point"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">One improvement</label>
                     <input
                       required
-                      value={p1}
-                      onChange={(e) => setP1(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
-                      placeholder="Priority 1 (Required)"
-                    />
-                    <input
-                      value={p2}
-                      onChange={(e) => setP2(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
-                      placeholder="Priority 2 (Optional)"
-                    />
-                    <input
-                      value={p3}
-                      onChange={(e) => setP3(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
-                      placeholder="Priority 3 (Optional)"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Target Practice Skill</label>
-                    <select
-                      value={mainSkill}
-                      onChange={(e) => setMainSkill(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
-                    >
-                      <option value="">No Skill Selected</option>
-                      {Array.isArray(skillsData?.data) && skillsData.data.map((s: any) => (
-                        <option key={s.id} value={s.name}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Identified Risks</label>
-                    <input
-                      value={risks}
-                      onChange={(e) => setRisks(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
-                      placeholder="e.g. Meeting fatigue, blockers"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={morningMutation.isPending}
-                    className="px-4 py-2.5 rounded-button bg-gradient-to-r from-primary to-secondary text-white font-bold text-xs shadow-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    {morningMutation.isPending ? 'Saving...' : 'Submit Morning Check-in'}
-                  </button>
-                </div>
-              </form>
-            ) : !todayLogQuery.data.wins ? (
-              /* Evening Review Form */
-              <form
-                onSubmit={handleEveningSubmit}
-                className="bg-surface/50 border border-border rounded-card p-6 shadow-card space-y-6"
-              >
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-bold text-textPrimary uppercase tracking-wider">Evening Review</h2>
-                  <span className="text-xs font-bold text-accent bg-accent/10 px-3 py-1 rounded-full border border-accent/20">
-                    Day Check-in Logged
-                  </span>
-                </div>
-
-                <div className="p-4 border border-border bg-surface/30 rounded-card space-y-2 text-xs">
-                  <p className="font-bold text-textPrimary uppercase text-[9px] tracking-wider text-textSecondary">Morning Intentions Summary</p>
-                  <p className="text-textPrimary font-semibold">⚡ Main Skill Focus: <span className="text-primary">{todayLogQuery.data.mainSkill}</span></p>
-                  <div className="space-y-1">
-                    <p className="font-bold text-textSecondary text-[9px] tracking-wider">PRIORITIES:</p>
-                    {Array.isArray(todayLogQuery.data.topPriorities) && (todayLogQuery.data.topPriorities as string[]).map((p, idx) => (
-                      <p key={idx} className="text-textSecondary">• {p}</p>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">What did you accomplish today (Wins)?</label>
-                  <textarea
-                    required
-                    value={wins}
-                    onChange={(e) => setWins(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
-                    rows={3}
-                    placeholder="Key focus areas, shipped features, sales calls..."
-                  />
-                </div>
-                
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">What blocked you or went wrong (Misses)?</label>
-                  <textarea
-                    required
-                    value={misses}
-                    onChange={(e) => setMisses(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
-                    rows={2}
-                    placeholder="Dependencies, bottlenecks, meeting fatigue..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Lessons learned</label>
-                    <input
                       value={lessons}
                       onChange={(e) => setLessons(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
-                      placeholder="e.g. Delegate ops tasks"
+                      className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                      placeholder="Tactical adjustment for the next session"
                     />
                   </div>
+
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Top priority for tomorrow</label>
+                    <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Top priorities for tomorrow</label>
                     <input
+                      required
                       value={tomorrowPriorities}
                       onChange={(e) => setTomorrowPriorities(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
-                      placeholder="Single critical objective"
+                      className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                      placeholder="e.g. Complete review screen, schedule pitch"
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-3 pt-4 border-t border-border/40">
+                  <button type="button" onClick={() => { setWins(''); setMisses(''); }} className="px-4 py-2 rounded-button bg-surface border border-border text-textPrimary text-xs font-bold hover:bg-background/80 transition-all">Save Draft</button>
                   <button
                     type="submit"
-                    disabled={eveningMutation.isPending}
-                    className="px-4 py-2.5 rounded-button bg-gradient-to-r from-primary to-secondary text-white font-bold text-xs shadow-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    disabled={generateReviewMutation.isPending}
+                    className="px-4 py-2 rounded-button bg-gradient-to-r from-primary to-secondary text-white text-xs font-bold hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 shadow-md"
                   >
-                    <Send size={14} /> {eveningMutation.isPending ? 'Submitting...' : 'Submit Evening Review'}
+                    <Send size={13} /> {generateReviewMutation.isPending ? 'Locking...' : 'Submit Review'}
                   </button>
                 </div>
               </form>
             ) : (
-              /* Completed Log Summary View */
-              <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card space-y-6 animate-fade-in">
-                <div className="flex items-center justify-between border-b border-border/40 pb-4">
-                  <div>
-                    <h2 className="text-md font-bold text-textPrimary">Daily Journal Entry Complete</h2>
-                    <p className="text-xs text-textSecondary mt-0.5">Date: {selectedDate}</p>
-                  </div>
-                  <div className="bg-success/15 border border-success/20 text-success text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                    <CheckCircle2 size={14} /> CEO Score: {todayLogQuery.data.ceoScore ?? 0}
-                  </div>
+              /* Read-only Mode (Locked Daily Review View) */
+              <div className="space-y-6 animate-fade-in">
+                
+                {/* Submitted Alert */}
+                <div className="bg-success/10 border border-success/20 text-success text-xs font-semibold px-4 py-3 rounded-card flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 size={16} /> Review submitted successfully
+                  </span>
+                  <span className="flex items-center gap-1 bg-success/20 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-extrabold">
+                    <Lock size={11} /> Locked
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <p className="text-[9px] uppercase tracking-wider font-extrabold text-textSecondary">Morning Check-in</p>
-                    <p className="text-xs text-textPrimary font-semibold">⚡ Energy: {todayLogQuery.data.energy}/10</p>
-                    <p className="text-xs text-textPrimary font-semibold">🎯 Skill Target: {todayLogQuery.data.mainSkill}</p>
-                    <p className="text-xs text-textSecondary leading-relaxed">{todayLogQuery.data.risks ? `⚠️ Risks: ${todayLogQuery.data.risks}` : 'No risks recorded.'}</p>
+                {/* AI Coach Summary Card */}
+                <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card space-y-6 relative overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-border/40 pb-4">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={16} className="text-primary animate-pulse" />
+                      <h3 className="text-sm font-extrabold text-textPrimary uppercase tracking-wider">AI Coach Summary</h3>
+                    </div>
+                    <button
+                      onClick={() => generateReviewMutation.mutateAsync({ type: 'Daily', date: selectedDate })}
+                      disabled={generateReviewMutation.isPending}
+                      className="px-3 py-1.5 rounded bg-surface border border-border text-textSecondary text-[10px] font-bold hover:bg-background hover:text-textPrimary transition-all flex items-center gap-1 shadow-sm"
+                    >
+                      <RefreshCw size={11} className={generateReviewMutation.isPending ? 'animate-spin' : ''} /> Regenerate
+                    </button>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-[9px] uppercase tracking-wider font-extrabold text-textSecondary">Evening Review</p>
-                    <p className="text-xs text-textPrimary font-semibold">🏆 Wins: {todayLogQuery.data.wins}</p>
-                    <p className="text-xs text-textPrimary/80">⚠️ Misses: {todayLogQuery.data.misses}</p>
-                    <p className="text-xs text-textSecondary italic">{todayLogQuery.data.lessons ? `💡 Lesson: "${todayLogQuery.data.lessons}"` : ''}</p>
-                  </div>
-                </div>
 
-                {/* AI Advice Block */}
-                <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-transparent border border-primary/20 p-5 rounded-card relative overflow-hidden">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles size={15} className="text-primary" />
-                    <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider">AI Executive Advisor</h3>
-                  </div>
-                  <p className="text-xs leading-relaxed text-textPrimary font-medium">
-                    &ldquo;Excellent execution today! By recognizing the blockers around &ldquo;{todayLogQuery.data.misses}&rdquo;, you have derived a clear roadmap. For tomorrow, prioritizing &ldquo;{todayLogQuery.data.tomorrowPriorities}&rdquo; will maintain your alignment.&rdquo;
+                  <p className="text-xs leading-relaxed text-textPrimary font-medium border-l-2 border-primary pl-4 py-1 bg-primary/5 rounded-r">
+                    {currentDailyReview.summary}
                   </p>
+
+                  {/* AI strengths & recommendations grid */}
+                  {currentDailyReview.recommendations && (currentDailyReview.recommendations as any).strengths && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] font-extrabold uppercase text-success tracking-wider">Strengths & Wins</h4>
+                        <div className="space-y-1.5">
+                          {(currentDailyReview.recommendations as any).strengths.map((str: string, i: number) => (
+                            <p key={i} className="text-xs text-textSecondary font-medium">• {str}</p>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] font-extrabold uppercase text-primary tracking-wider">Coach Recommendations</h4>
+                        <div className="space-y-1.5">
+                          {(currentDailyReview.recommendations as any).recommendations.map((rec: string, i: number) => (
+                            <p key={i} className="text-xs text-textSecondary font-medium">• {rec}</p>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-4 border-t border-border/40 text-[9px] text-textSecondary font-semibold">
+                    <span>Generated by AI Coach • {new Date(currentDailyReview.createdAt).toLocaleDateString()}</span>
+                    <span className="italic text-primary">&ldquo;{(currentDailyReview.recommendations as any)?.motivationalMessage || 'Keep focusing!'}&rdquo;</span>
+                  </div>
                 </div>
 
-                {/* Reset button (allows updating review) */}
-                <div className="flex justify-end pt-2">
-                  <button
-                    onClick={() => {
-                      if (todayLogQuery.data) {
-                        todayLogQuery.data.wins = null
-                        setWins(wins || todayLogQuery.data.wins || '')
-                      }
-                    }}
-                    className="text-xs text-primary font-bold hover:underline"
-                  >
-                    Update Evening Review
-                  </button>
+                {/* Display Locked Reflection Answers */}
+                <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card space-y-4">
+                  <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-textPrimary">Your Reflection</h3>
+                    <button
+                      onClick={async () => {
+                        // Delete review to unlock and edit
+                        if (confirm('Unlock this reflection to edit? The generated AI summary will be updated.')) {
+                          await generateReviewMutation.mutateAsync({
+                            type: 'Daily',
+                            date: selectedDate,
+                            reflectionData: { wins, misses, achievement, challenge, lessons, tomorrowPriorities, energy }
+                          })
+                        }
+                      }}
+                      className="text-xs text-primary font-bold hover:underline"
+                    >
+                      View/Edit
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <p className="font-extrabold text-[9px] text-textSecondary uppercase tracking-wider">What went well today?</p>
+                      <p className="text-textPrimary mt-0.5">{wins || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="font-extrabold text-[9px] text-textSecondary uppercase tracking-wider">What didn't go well?</p>
+                      <p className="text-textPrimary mt-0.5">{misses || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="font-extrabold text-[9px] text-textSecondary uppercase tracking-wider">Biggest achievement</p>
+                      <p className="text-textPrimary mt-0.5">{achievement || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="font-extrabold text-[9px] text-textSecondary uppercase tracking-wider">Biggest challenge</p>
+                      <p className="text-textPrimary mt-0.5">{challenge || 'N/A'}</p>
+                    </div>
+                  </div>
                 </div>
+
               </div>
             )}
           </div>
 
-          {/* Right Column: Achievements & Streak & History */}
+          {/* Right Column: Scores & Summary */}
           <div className="space-y-6">
+            
+            {/* Dynamic CEO Score Widget */}
             <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card space-y-4">
-              <h3 className="text-xs font-bold text-textSecondary uppercase tracking-wider">Reflections Stats</h3>
-              <div className="space-y-3.5 pt-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-textSecondary flex items-center gap-1.5"><Award size={15} className="text-primary" /> Current Status</span>
-                  <span className="font-extrabold text-textPrimary">Steady</span>
+              <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider border-b border-border/40 pb-2">Scores & Summary</h3>
+              
+              <div className="space-y-4 pt-1">
+                {/* CEO Score Gauge */}
+                <div className="flex items-center gap-4">
+                  <div className="relative w-16 h-16 shrink-0 flex items-center justify-center bg-gradient-to-br from-primary/5 to-secondary/5 border border-border rounded-full shadow-inner">
+                    <span className="text-lg font-black text-primary">{currentDailyReview ? (currentDailyReview.recommendations as any).stats?.ceoScore : todayStats.ceoScore}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-extrabold text-textSecondary">CEO Score</span>
+                    <p className="text-xs font-black text-textPrimary mt-0.5">{currentDailyReview ? (currentDailyReview.recommendations as any).stats?.ceoScore : todayStats.ceoScore} / 100</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-textSecondary flex items-center gap-1.5"><Flame size={15} className="text-accent" /> Total Logs</span>
-                  <span className="font-extrabold text-textPrimary">{totalEntries} entries</span>
+
+                {/* Energy Indicator */}
+                <div className="flex items-center gap-4 border-t border-border/40 pt-3">
+                  <div className="p-2 bg-success/10 rounded-lg text-success">
+                    <Smile size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-extrabold text-textSecondary">Energy Level</span>
+                    <p className="text-xs font-black text-textPrimary mt-0.5">{currentDailyReview ? (currentDailyReview.recommendations as any).stats?.energy : todayStats.energy} / 10</p>
+                  </div>
+                </div>
+
+                {/* Deep Work logged */}
+                <div className="flex items-center gap-4 border-t border-border/40 pt-3">
+                  <div className="p-2 bg-accent/10 rounded-lg text-accent">
+                    <Zap size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-extrabold text-textSecondary">Deep Work Time</span>
+                    <p className="text-xs font-black text-textPrimary mt-0.5">
+                      {formatMinutes(currentDailyReview ? (currentDailyReview.recommendations as any).stats?.deepWorkTotalMinutes : todayStats.deepWorkMinutes)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Activities logged */}
+                <div className="flex items-center gap-4 border-t border-border/40 pt-3">
+                  <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-500">
+                    <BookOpen size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-extrabold text-textSecondary">Activities Logged</span>
+                    <p className="text-xs font-black text-textPrimary mt-0.5">
+                      {currentDailyReview ? (currentDailyReview.recommendations as any).stats?.activitiesLogged : todayStats.activitiesCount} sessions
+                    </p>
+                  </div>
                 </div>
               </div>
+
+              {/* Mood picker */}
+              {!currentDailyReview && (
+                <div className="space-y-2 pt-3 border-t border-border/40">
+                  <span className="text-[10px] uppercase font-extrabold text-textSecondary">Mood / Mind State</span>
+                  <div className="flex gap-1.5">
+                    {[
+                      { val: 9, label: 'Optimal', icon: Smile },
+                      { val: 7, label: 'Steady', icon: Meh },
+                      { val: 4, label: 'Drained', icon: Frown },
+                    ].map(m => (
+                      <button
+                        type="button"
+                        key={m.val}
+                        onClick={() => setEnergy(m.val)}
+                        className={`flex-1 py-1.5 rounded border text-[10px] font-bold flex items-center justify-center gap-1 transition-all ${
+                          energy === m.val ? 'bg-primary/10 border-primary text-primary' : 'bg-surface border-border text-textSecondary'
+                        }`}
+                      >
+                        <m.icon size={12} /> {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Quick note */}
+              {!currentDailyReview && (
+                <div className="space-y-1.5 pt-3">
+                  <span className="text-[10px] uppercase font-extrabold text-textSecondary">Quick Notes</span>
+                  <input
+                    value={quickNote}
+                    onChange={e => setQuickNote(e.target.value)}
+                    className="w-full px-2.5 py-2 border border-border rounded bg-surface text-textPrimary text-xs focus:outline-none focus:border-primary placeholder:text-textSecondary/50"
+                    placeholder="Mindset, blockers, focus triggers..."
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Daily History list */}
+            {/* Reflection Journal History */}
             <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card space-y-4">
-              <h3 className="text-xs font-bold text-textSecondary uppercase tracking-wider">Journal History</h3>
-              <div className="space-y-3 overflow-y-auto max-h-[300px] pr-1">
-                {historyQuery.data?.data?.map((log) => {
-                  const logDate = new Date(log.date).toISOString().split('T')[0]
+              <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider">Journal History</h3>
+              <div className="space-y-2.5 overflow-y-auto max-h-[250px] pr-1">
+                {dailyReviews.map((log) => {
+                  const logDate = log.date.split('T')[0]
                   const isActive = selectedDate === logDate
                   return (
                     <button
                       key={log.id}
                       onClick={() => setSelectedDate(logDate)}
                       className={`w-full flex items-center justify-between py-2 border-b border-border last:border-0 text-left transition-all ${
-                        isActive ? 'text-primary scale-102 font-bold' : 'hover:opacity-80'
+                        isActive ? 'text-primary scale-102 font-bold' : 'hover:opacity-85'
                       }`}
                     >
                       <div>
                         <p className="text-xs font-bold text-textPrimary">{logDate}</p>
-                        <p className="text-[10px] text-textSecondary">Energy: {log.energy}/10</p>
+                        <p className="text-[10px] text-textSecondary">Energy: {(log.recommendations as any).stats?.energy || 7}/10</p>
                       </div>
-                      <span className="text-[10px] bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">
-                        Score: {log.ceoScore ?? 0}
+                      <span className="text-[10px] bg-primary/10 border border-primary/20 text-primary px-2.5 py-0.5 rounded-full font-extrabold">
+                        CEO Score: {(log.recommendations as any).stats?.ceoScore ?? 70}
                       </span>
                     </button>
-                  )
-                })}
-                {totalEntries === 0 && (
-                  <p className="text-xs text-textSecondary italic text-center py-4">No historical logs found.</p>
+                  )})}
+                {dailyReviews.length === 0 && (
+                  <p className="text-xs text-textSecondary italic text-center py-4">No logged reflections.</p>
                 )}
               </div>
             </div>
+
           </div>
         </div>
       )}
 
-      {/* Weekly summary tab */}
+      {/* Tab 2: Weekly Summary */}
       {activeTab === 'weekly' && (
-        <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card max-w-3xl space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-textPrimary uppercase tracking-wider">Weekly Performance Summary</h2>
+        <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card max-w-3xl space-y-6 animate-fade-in">
+          <div className="flex items-center justify-between border-b border-border/40 pb-4">
+            <div>
+              <h2 className="text-sm font-bold text-textPrimary uppercase tracking-wider">Weekly Performance Summary</h2>
+              <p className="text-xs text-textSecondary mt-0.5">Dynamically aggregate your execution statistics for the past 7 days.</p>
+            </div>
             <button
               onClick={handleWeeklyGenerate}
               disabled={generateReviewMutation.isPending}
@@ -471,45 +539,86 @@ export default function ReviewsHub() {
             </button>
           </div>
 
-          {weeklyReviewsQuery.isLoading ? (
-            <div className="p-8 text-center text-xs text-textSecondary font-bold">Syncing weekly audits...</div>
-          ) : latestWeeklyReview ? (
-            <>
-              {/* Stats grid */}
-              <div className="grid grid-cols-3 gap-6 py-4 border-y border-border/40">
-                <div className="text-center">
-                  <p className="text-2xl font-extrabold text-primary">14.5h</p>
-                  <p className="text-[10px] font-bold text-textSecondary mt-1">Deep Work Logged</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-extrabold text-success">Active</p>
-                  <p className="text-[10px] font-bold text-textSecondary mt-1">Status</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-extrabold text-accent">Audited</p>
-                  <p className="text-[10px] font-bold text-textSecondary mt-1">Classification</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider">AI Executive Coach Reflection</h3>
-                  <p className="text-xs leading-relaxed text-textSecondary font-medium">
-                    {latestWeeklyReview.summary}
-                  </p>
-                </div>
-                {latestWeeklyReview.recommendations && latestWeeklyReview.recommendations.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-border/40">
-                    <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider">Strategic Recommendations</h3>
-                    <div className="space-y-1.5">
-                      {latestWeeklyReview.recommendations.map((rec, i) => (
-                        <p key={i} className="text-xs text-textSecondary font-medium">• {rec}</p>
-                      ))}
+          {weeklyReviews.length > 0 ? (
+            (() => {
+              const latestWeekly = weeklyReviews[0]
+              const recs = latestWeekly.recommendations as any
+              return (
+                <div className="space-y-6">
+                  {/* Stats Row */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-y border-border/40 bg-background/30 rounded-card p-4">
+                    <div className="text-center">
+                      <p className="text-xl font-black text-primary">
+                        {recs?.stats?.deepWorkTotalMinutes ? formatMinutes(recs.stats.deepWorkTotalMinutes) : '14.5h'}
+                      </p>
+                      <p className="text-[10px] font-bold text-textSecondary mt-1">Deep Work Logged</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-black text-success">
+                        {recs?.stats?.ceoScore ? `${recs.stats.ceoScore}/100` : '78/100'}
+                      </p>
+                      <p className="text-[10px] font-bold text-textSecondary mt-1">Average CEO Score</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-black text-accent">
+                        {recs?.stats?.goalsAdvanced ?? 2} goals
+                      </p>
+                      <p className="text-[10px] font-bold text-textSecondary mt-1">Goals Advanced</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-black text-indigo-500">
+                        {recs?.stats?.skillPracticeCount ?? 3} skills
+                      </p>
+                      <p className="text-[10px] font-bold text-textSecondary mt-1">Skills Practiced</p>
                     </div>
                   </div>
-                )}
-              </div>
-            </>
+
+                  {/* AI Coaching summary */}
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-primary" /> AI Executive Coach Summary
+                      </h3>
+                      <p className="text-xs leading-relaxed text-textSecondary font-medium">
+                        {latestWeekly.summary}
+                      </p>
+                    </div>
+
+                    {recs && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border/40 pt-4 mt-2">
+                        <div className="space-y-2">
+                          <h4 className="text-[10px] font-extrabold uppercase text-success tracking-wider">Weekly Wins</h4>
+                          <div className="space-y-1.5">
+                            {recs.strengths?.map((str: string, i: number) => (
+                              <p key={i} className="text-xs text-textSecondary font-medium">• {str}</p>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="text-[10px] font-extrabold uppercase text-danger tracking-wider">Weekly Misses</h4>
+                          <div className="space-y-1.5">
+                            {recs.weaknesses?.map((weak: string, i: number) => (
+                              <p key={i} className="text-xs text-textSecondary font-medium">• {weak}</p>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {recs?.recommendations && (
+                      <div className="space-y-2 border-t border-border/40 pt-4 mt-2">
+                        <h4 className="text-[10px] font-extrabold uppercase text-primary tracking-wider">Strategic Recommendations</h4>
+                        <div className="space-y-1.5">
+                          {recs.recommendations.map((rec: string, i: number) => (
+                            <p key={i} className="text-xs text-textSecondary font-medium">• {rec}</p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()
           ) : (
             <div className="text-center py-12 border-t border-border/40">
               <p className="text-xs text-textSecondary italic">No weekly reviews generated yet.</p>
@@ -525,64 +634,98 @@ export default function ReviewsHub() {
         </div>
       )}
 
-      {/* Monthly summary tab */}
+      {/* Tab 3: Monthly Audit */}
       {activeTab === 'monthly' && (
-        <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card max-w-3xl space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-textPrimary uppercase tracking-wider">Monthly Audit Report</h2>
+        <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card max-w-3xl space-y-6 animate-fade-in">
+          <div className="flex items-center justify-between border-b border-border/40 pb-4">
+            <div>
+              <h2 className="text-sm font-bold text-textPrimary uppercase tracking-wider">Monthly Audit Report</h2>
+              <p className="text-xs text-textSecondary mt-0.5">Comprehensive audit of capabilities growth, focus streaks, and CEO score trend.</p>
+            </div>
             <button
               onClick={handleMonthlyGenerate}
               disabled={generateReviewMutation.isPending}
               className="px-4 py-2.5 rounded-button bg-gradient-to-r from-primary to-secondary text-white font-bold text-xs shadow-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
             >
               <RefreshCw size={14} className={generateReviewMutation.isPending ? 'animate-spin' : ''} />
-              {generateReviewMutation.isPending ? 'Generating...' : 'Generate Audit'}
+              {generateReviewMutation.isPending ? 'Generate Audit' : 'Generate Audit'}
             </button>
           </div>
 
-          {monthlyReviewsQuery.isLoading ? (
-            <div className="p-8 text-center text-xs text-textSecondary font-bold">Syncing monthly audits...</div>
-          ) : latestMonthlyReview ? (
-            <>
-              {/* Stats grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-4 border-y border-border/40">
-                <div className="text-center">
-                  <p className="text-2xl font-extrabold text-primary">58h</p>
-                  <p className="text-[10px] font-bold text-textSecondary mt-1">Deep Work</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-extrabold text-success">Shipped</p>
-                  <p className="text-[10px] font-bold text-textSecondary mt-1">Goals Status</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-extrabold text-accent">+0.8</p>
-                  <p className="text-[10px] font-bold text-textSecondary mt-1">Avg Skill Growth</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-extrabold text-textPrimary">Active</p>
-                  <p className="text-[10px] font-bold text-textSecondary mt-1">Classification</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider">AI Executive Monthly Insights</h3>
-                  <p className="text-xs leading-relaxed text-textSecondary font-medium">
-                    {latestMonthlyReview.summary}
-                  </p>
-                </div>
-                {latestMonthlyReview.recommendations && latestMonthlyReview.recommendations.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-border/40">
-                    <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider">Strategic Goals Recommendations</h3>
-                    <div className="space-y-1.5">
-                      {latestMonthlyReview.recommendations.map((rec, i) => (
-                        <p key={i} className="text-xs text-textSecondary font-medium">• {rec}</p>
-                      ))}
+          {monthlyReviews.length > 0 ? (
+            (() => {
+              const latestMonthly = monthlyReviews[0]
+              const recs = latestMonthly.recommendations as any
+              return (
+                <div className="space-y-6">
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-y border-border/40 bg-background/30 rounded-card p-4">
+                    <div className="text-center">
+                      <p className="text-xl font-black text-primary">
+                        {recs?.stats?.deepWorkTotalMinutes ? formatMinutes(recs.stats.deepWorkTotalMinutes) : '58h'}
+                      </p>
+                      <p className="text-[10px] font-bold text-textSecondary mt-1">Deep Work hours</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-black text-success">Shipped</p>
+                      <p className="text-[10px] font-bold text-textSecondary mt-1">Goals Status</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-black text-accent">+0.8</p>
+                      <p className="text-[10px] font-bold text-textSecondary mt-1">Avg Skill Growth</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-black text-indigo-500">Active</p>
+                      <p className="text-[10px] font-bold text-textSecondary mt-1">Classification</p>
                     </div>
                   </div>
-                )}
-              </div>
-            </>
+
+                  {/* AI Content */}
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-primary animate-pulse" /> AI Executive Monthly Insights
+                      </h3>
+                      <p className="text-xs leading-relaxed text-textSecondary font-medium">
+                        {latestMonthly.summary}
+                      </p>
+                    </div>
+
+                    {recs && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border/40 pt-4 mt-2">
+                        <div className="space-y-2">
+                          <h4 className="text-[10px] font-extrabold uppercase text-success tracking-wider">Key wins & sustained habits</h4>
+                          <div className="space-y-1.5">
+                            {recs.strengths?.map((str: string, i: number) => (
+                              <p key={i} className="text-xs text-textSecondary font-medium">• {str}</p>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="text-[10px] font-extrabold uppercase text-danger tracking-wider">Long-term bottlenecks</h4>
+                          <div className="space-y-1.5">
+                            {recs.weaknesses?.map((weak: string, i: number) => (
+                              <p key={i} className="text-xs text-textSecondary font-medium">• {weak}</p>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {recs?.recommendations && (
+                      <div className="space-y-2 border-t border-border/40 pt-4 mt-2">
+                        <h4 className="text-[10px] font-extrabold uppercase text-primary tracking-wider">Strategic Goals Recommendations</h4>
+                        <div className="space-y-1.5">
+                          {recs.recommendations.map((rec: string, i: number) => (
+                            <p key={i} className="text-xs text-textSecondary font-medium">• {rec}</p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()
           ) : (
             <div className="text-center py-12 border-t border-border/40">
               <p className="text-xs text-textSecondary italic">No monthly audits generated yet.</p>

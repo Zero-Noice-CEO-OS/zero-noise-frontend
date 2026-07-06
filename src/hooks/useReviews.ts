@@ -24,8 +24,8 @@ export function useGenerateReviewMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ type, date }: { type: ReviewType; date: string }) =>
-      reviewService.generateReview(type, date),
+    mutationFn: ({ type, date, reflectionData }: { type: ReviewType; date: string; reflectionData?: any }) =>
+      reviewService.generateReview(type, date, reflectionData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });

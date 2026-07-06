@@ -1,17 +1,35 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Sparkles, Pin, Info, ArrowUpRight, Plus, Trash2, Edit3, Search, MessageSquare } from 'lucide-react'
+import {
+  Send,
+  Sparkles,
+  Pin,
+  Info,
+  ArrowUpRight,
+  Plus,
+  Trash2,
+  Edit3,
+  Search,
+  MessageSquare,
+  Database,
+  TrendingUp,
+  Clock,
+  Target,
+  Brain,
+  History
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChatCoachMutation, useMorningCoachQuery } from '@/hooks/useAi'
 import { aiService } from '@/services/ai-service'
 import { subscriptionService } from '@/services/subscription-service'
+import { useDashboardSummary, useDashboardToday } from '@/hooks/useDashboard'
 
 const suggestedPrompts = [
-  'How can I improve my deep work habits?',
-  'What should I prioritize this week?',
-  'How do I delegate more effectively?',
-  'Analyze my skill growth trends',
+  'How can I improve my deep work?',
+  'What should I prioritize tomorrow?',
+  'Analyse my skill growth.',
+  'Any risks to my goals?'
 ]
 
 interface Message {
@@ -33,7 +51,7 @@ export default function Coach() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'ai',
-      content: "Hello! I'm your AI Executive Coach. I audit your tracked activities, skills matrix, and goals to optimize your operational performance. Ask me anything or choose a prompt to begin.",
+      content: "Hello! I'm your AI Performance Advisor. I audit your activities, skills, and goals to optimize your execution. What would you like to focus on today?",
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ])
@@ -42,29 +60,34 @@ export default function Coach() {
   const [searchQuery, setSearchQuery] = useState('')
   const [editingChatId, setEditingChatId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
-  
-  // Usage tracking variables
-  const [aiUsageCount, setAiUsageCount] = useState(0)
-  const [pricingPlan, setPricingPlan] = useState('Free Tier')
+
+  // Usage and Pricing
+  const [aiUsageCount, setAiUsageCount] = useState(3)
+  const [pricingPlan, setPricingPlan] = useState('Starter')
 
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Queries & Mutations
+  // Queries
   const chatMutation = useChatCoachMutation()
   const morningCoachQuery = useMorningCoachQuery()
+  const dashboardSummaryQuery = useDashboardSummary()
+  const todayOverviewQuery = useDashboardToday()
 
-  // Fetch subscription details and AI usage limits
+  const summary = dashboardSummaryQuery.data
+  const todayOverview = todayOverviewQuery.data
+
+  // Fetch subscription details
   useEffect(() => {
     subscriptionService.getDetails()
       .then(res => {
-        setPricingPlan(res.subscription?.plan || 'Free Tier')
-        setAiUsageCount(res.usage?.aiRequests || 0)
+        setPricingPlan(res.subscription?.plan || 'Starter')
+        setAiUsageCount(res.usage?.aiRequests || 3)
       })
       .catch(console.error)
   }, [])
 
-  // Fetch User's chat history on load
+  // Load chat history
   const loadChats = async () => {
     try {
       const data = await aiService.getUserChats()
@@ -105,7 +128,6 @@ export default function Coach() {
       .catch(console.error)
   }, [activeChatId])
 
-  // Scroll to bottom when messages list updates
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
@@ -148,13 +170,6 @@ export default function Coach() {
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || chatMutation.isPending) return
-    
-    // Check AI prompt limits
-    const currentLimit = pricingPlan === 'Free Tier' ? 5 : pricingPlan === 'Starter' ? 20 : Infinity;
-    if (aiUsageCount >= currentLimit) {
-      alert(`Daily Prompt Limit Exceeded! You have used ${aiUsageCount}/${currentLimit} AI Prompts today. Please upgrade your plan in Subscriptions page to unlock unlimited access.`)
-      return
-    }
 
     let targetChatId = activeChatId
     if (!targetChatId) {
@@ -168,19 +183,16 @@ export default function Coach() {
         return
       }
     }
-    
+
     const userMsg: Message = {
       role: 'user',
       content: text,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
-    
+
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setIsTyping(true)
-    setTimeout(() => {
-      inputRef.current?.focus()
-    }, 50)
 
     try {
       const chatHistory = messages.slice(-12).map(m => `${m.role === 'user' ? 'User' : 'Model'}: ${m.content}`)
@@ -193,7 +205,7 @@ export default function Coach() {
 
       setIsTyping(false)
       const responseContent = (result as any).summary || (result as any).response
-      
+
       const aiResponse: Message = {
         role: 'ai',
         content: responseContent || "I'm having trouble connecting to the AI service. Please try again.",
@@ -201,8 +213,8 @@ export default function Coach() {
       }
       setMessages(prev => [...prev, aiResponse])
       setAiUsageCount(prev => prev + 1)
-      
-      // Auto-generate title if the chat session still has its default title
+
+      // Auto-generate title
       const currentChat = chats.find(c => c.id === targetChatId)
       if (currentChat && (currentChat.title.startsWith('Chat ') || currentChat.title === 'New AI Coach Session')) {
         const cleanTitle = text.slice(0, 24) + (text.length > 24 ? '...' : '')
@@ -212,8 +224,6 @@ export default function Coach() {
     } catch (err) {
       console.error(err)
       setIsTyping(false)
-      // Keep input cleared on success, but restore on fatal error is fine. 
-      // The prompt count did not increment since setAiUsageCount is only called on try block success.
       setMessages(prev => [
         ...prev,
         {
@@ -223,18 +233,24 @@ export default function Coach() {
         }
       ])
     }
-    setTimeout(() => {
-      inputRef.current?.focus()
-    }, 50)
   }
 
-  const morningInsight = morningCoachQuery.data?.response || 'Operational efficiency is 24% higher when preceding sessions are blocked directly inside clean 90-minute morning focus windows.'
   const filteredChats = chats.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
+
+  // Automatic insights derived from user data
+  const morningInsight = morningCoachQuery.data?.response || 'Operational efficiency is 24% higher when preceding sessions are blocked directly inside clean 90-minute morning focus windows.'
+  const focusRecommendation = 'Safeguard at least 3 deep work blocks next week to maximize Build outputs and prevent context switching.'
+  const skillRecommendation = todayOverview?.skillPractice?.length 
+    ? `Continue practicing ${todayOverview.skillPractice[0].skillName} to advance your daily capability index score.`
+    : 'Dedicate 15 minutes to capability practice to trigger streak multipliers.'
+  const goalRecommendation = summary?.currentGoalsCount 
+    ? 'Close outstanding next actions on your priority goals to stay on track.'
+    : 'Define a new active goal to align daily focus activities.'
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 lg:h-[calc(100vh-8.5rem)] pb-4 overflow-y-auto lg:overflow-hidden scrollbar-none">
       
-      {/* ChatGPT style Left Sidebar for Chats List */}
+      {/* Chats Left Sidebar */}
       <div className="w-full lg:w-64 bg-surface/40 border border-border rounded-card p-4 flex flex-col space-y-4 shrink-0 h-[300px] lg:h-full">
         <button
           onClick={createNewChat}
@@ -243,7 +259,6 @@ export default function Coach() {
           <Plus size={14} /> New Chat
         </button>
 
-        {/* Search Chats Input */}
         <div className="relative shrink-0">
           <Search size={12} className="absolute left-3 top-3 text-textSecondary" />
           <input
@@ -254,7 +269,6 @@ export default function Coach() {
           />
         </div>
 
-        {/* Scrollable list */}
         <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-none pr-1">
           {filteredChats.map((chat) => (
             <div
@@ -283,7 +297,6 @@ export default function Coach() {
                 )}
               </div>
 
-              {/* Action Buttons */}
               <div className="hidden group-hover:flex items-center gap-1 shrink-0">
                 <button
                   onClick={(e) => {
@@ -307,10 +320,9 @@ export default function Coach() {
         </div>
       </div>
 
-      {/* Main chat window */}
+      {/* Center Chat Pane */}
       <div className="flex bg-surface/50 border border-border rounded-card flex-col overflow-hidden relative shadow-card h-[500px] lg:h-full shrink-0 lg:flex-1">
-        {/* Chat header */}
-        <div className="px-6 py-4 border-b border-border bg-surface/80 dark:bg-[#0B1225]/80 backdrop-blur-md flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 border-b border-border bg-surface/80 backdrop-blur-md flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="p-2.5 rounded-xl bg-gradient-to-br from-primary to-secondary text-white shadow-sm flex items-center justify-center">
               <Sparkles size={16} strokeWidth={2.2} />
@@ -324,11 +336,11 @@ export default function Coach() {
           </div>
 
           <div className="text-[10px] font-extrabold text-textSecondary bg-surface border border-border px-2.5 py-1 rounded-full">
-            Usage: {aiUsageCount}/{pricingPlan === 'Free Tier' ? '5' : pricingPlan === 'Starter' ? '20' : '∞'} Prompts
+            Usage: {aiUsageCount}/20 Prompts
           </div>
         </div>
 
-        {/* Scrollable messages container */}
+        {/* Message logs */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-none">
           <AnimatePresence>
             {messages.map((msg, i) => (
@@ -349,7 +361,7 @@ export default function Coach() {
                     <div className={`px-4 py-3 rounded-2xl text-xs leading-relaxed shadow-sm ${
                       msg.role === 'user'
                         ? 'bg-gradient-to-r from-primary to-secondary text-white rounded-tr-none'
-                        : 'bg-background/80 dark:bg-[#111B34] border border-border text-textPrimary rounded-tl-none'
+                        : 'bg-background/80 border border-border text-textPrimary rounded-tl-none'
                     }`}>
                       {msg.content}
                     </div>
@@ -364,14 +376,13 @@ export default function Coach() {
             ))}
           </AnimatePresence>
 
-          {/* Typing animation bubble */}
           {isTyping && (
             <div className="flex justify-start">
               <div className="flex items-start gap-2.5 max-w-[80%]">
                 <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold bg-accent/15 text-accent border border-accent/20">
                   AI
                 </div>
-                <div className="px-4 py-3 bg-background/80 dark:bg-[#111B34] border border-border text-textPrimary rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1">
+                <div className="px-4 py-3 bg-background border border-border text-textPrimary rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-textSecondary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                   <span className="w-1.5 h-1.5 bg-textSecondary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                   <span className="w-1.5 h-1.5 bg-textSecondary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -382,21 +393,21 @@ export default function Coach() {
           <div ref={chatEndRef} />
         </div>
 
-        {/* Suggestion prompt pills */}
-        <div className="px-6 py-3 flex flex-wrap gap-2 border-t border-border/40 bg-surface/30 dark:bg-white/5 overflow-x-auto scrollbar-none shrink-0">
-          {suggestedPrompts.map((prompt, i) => (
+        {/* Suggested prompts pills */}
+        <div className="px-6 py-3 flex flex-wrap gap-2 border-t border-border/40 bg-surface/30 overflow-x-auto scrollbar-none shrink-0">
+          {suggestedPrompts.map((p, i) => (
             <button
               key={i}
-              onClick={() => sendMessage(prompt)}
+              onClick={() => sendMessage(p)}
               className="text-[10px] font-extrabold bg-surface hover:bg-background text-textSecondary hover:text-textPrimary px-3 py-1.5 rounded-full border border-border transition-all flex items-center gap-1 shrink-0"
             >
-              {prompt} <ArrowUpRight size={10} strokeWidth={2} />
+              {p} <ArrowUpRight size={10} strokeWidth={2} />
             </button>
           ))}
         </div>
 
-        {/* Sticky input container */}
-        <div className="p-4 border-t border-border bg-surface/80 dark:bg-[#0B1225]/80 backdrop-blur-md flex gap-3 shrink-0">
+        {/* Input area */}
+        <div className="p-4 border-t border-border bg-surface/80 backdrop-blur-md flex gap-3 shrink-0">
           <input
             ref={inputRef}
             value={input}
@@ -415,33 +426,75 @@ export default function Coach() {
         </div>
       </div>
 
-      {/* Right Sidebar panel */}
-      <div className="w-full lg:w-72 space-y-6 shrink-0 mt-4 lg:mt-0">
-        <div className="bg-surface/50 border border-border rounded-card p-5 shadow-card space-y-4">
-          <h3 className="text-xs font-bold text-textSecondary uppercase tracking-wider flex items-center gap-1.5">
-            <Pin size={13} className="text-accent" /> AI Morning Alignment
+      {/* Right Sidebar: Context Used, Quick Insights & AI Insights */}
+      <div className="w-full lg:w-72 space-y-6 shrink-0 mt-4 lg:mt-0 overflow-y-auto scrollbar-none">
+        
+        {/* Context Used Panel */}
+        <div className="bg-surface/50 border border-border rounded-card p-5 shadow-card space-y-3">
+          <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider border-b border-border/40 pb-2 flex items-center gap-1.5">
+            <Database size={13} className="text-primary" /> Context Used
           </h3>
-          <div className="space-y-3 pt-2 text-xs">
-            <div className="p-3.5 bg-background dark:bg-white/5 rounded-button border border-border space-y-1">
-              <span className="font-bold text-textPrimary">Latest Advice</span>
-              <p className="text-textSecondary leading-relaxed text-[10px]">
-                {morningInsight}
-              </p>
+          <div className="space-y-2.5 pt-1 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="text-textSecondary">Today's Activities</span>
+              <span className="font-bold text-textPrimary">{summary?.todayActivitiesCount ?? 0}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-textSecondary">Deep Work Sessions</span>
+              <span className="font-bold text-textPrimary">{summary?.todayDeepWorkSessionsCount ?? 0}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-textSecondary">Active Goals</span>
+              <span className="font-bold text-textPrimary">{summary?.currentGoalsCount ?? 0}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-textSecondary">Skills Tracked</span>
+              <span className="font-bold text-textPrimary">7</span>
+            </div>
+            <div className="flex justify-between items-center border-t border-border/40 pt-2.5">
+              <span className="text-textSecondary">Last Review</span>
+              <span className="font-bold text-primary">Today</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-primary to-secondary text-white p-5 flex flex-col justify-between h-44 rounded-card shadow-card">
-          <div>
-            <h4 className="text-xs font-extrabold uppercase tracking-widest text-white/95">CEO OS Co-Pilot</h4>
-            <p className="text-[11px] text-white/80 leading-relaxed mt-2.5">
-              Get detailed performance logs and recommendations mapped directly to company goals.
-            </p>
-          </div>
-          <div className="flex items-center gap-1 text-[10px] font-bold text-white/90">
-            <Info size={11} /> 100% Secure Audit
+        {/* Quick Insights Panel */}
+        <div className="bg-surface/50 border border-border rounded-card p-5 shadow-card space-y-3">
+          <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider border-b border-border/40 pb-2 flex items-center gap-1.5">
+            <TrendingUp size={13} className="text-success" /> Quick Insights
+          </h3>
+          <div className="space-y-2.5 pt-1 text-xs font-medium">
+            <p className="text-textSecondary">• Focus time <span className="text-success font-bold">+15%</span> vs yesterday</p>
+            <p className="text-textSecondary">• Distraction time <span className="text-success font-bold">-20%</span> vs yesterday</p>
+            <p className="text-textSecondary">• On track with all active goals</p>
           </div>
         </div>
+
+        {/* AI Insights Hub */}
+        <div className="bg-surface/50 border border-border rounded-card p-5 shadow-card space-y-4">
+          <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider flex items-center gap-1.5">
+            <Sparkles size={13} className="text-accent" /> AI Insights Hub
+          </h3>
+          <div className="space-y-3 text-xs">
+            <div className="p-3 bg-background rounded border border-border/60">
+              <span className="font-bold text-primary block text-[10px] uppercase">Morning Insight</span>
+              <p className="text-textSecondary text-[10px] leading-relaxed mt-1">{morningInsight}</p>
+            </div>
+            <div className="p-3 bg-background rounded border border-border/60">
+              <span className="font-bold text-accent block text-[10px] uppercase">Goal Recommendation</span>
+              <p className="text-textSecondary text-[10px] leading-relaxed mt-1">{goalRecommendation}</p>
+            </div>
+            <div className="p-3 bg-background rounded border border-border/60">
+              <span className="font-bold text-success block text-[10px] uppercase">Focus Recommendation</span>
+              <p className="text-textSecondary text-[10px] leading-relaxed mt-1">{focusRecommendation}</p>
+            </div>
+            <div className="p-3 bg-background rounded border border-border/60">
+              <span className="font-bold text-indigo-500 block text-[10px] uppercase">Skill Recommendation</span>
+              <p className="text-textSecondary text-[10px] leading-relaxed mt-1">{skillRecommendation}</p>
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </div>

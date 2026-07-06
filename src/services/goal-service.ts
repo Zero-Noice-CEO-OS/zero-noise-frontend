@@ -13,12 +13,16 @@ export interface Goal {
   target: number;
   currentValue: number;
   progress: number; // calculated by backend
-  status: GoalStatus;
+  status: any;
   deadline: string;
   nextAction: string | null;
   createdAt: string;
   updatedAt: string;
-  activities?: any[]; // optional list of linked activities
+  activities?: any[];
+  deepWorkSessions?: any[];
+  timeline?: any[];
+  recentUpdates?: any[];
+  aiInsight?: string;
 }
 
 export interface PaginatedGoals {

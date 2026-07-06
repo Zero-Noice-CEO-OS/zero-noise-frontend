@@ -23,8 +23,20 @@ export interface PaginatedReviews {
 }
 
 export const reviewService = {
-  async generateReview(type: ReviewType, date: string): Promise<Review> {
-    const response = await apiClient.post<Review>('/reviews/generate', { type, date });
+  async generateReview(type: ReviewType, date: string, reflectionData?: {
+    wins?: string;
+    misses?: string;
+    achievement?: string;
+    challenge?: string;
+    lessons?: string;
+    tomorrowPriorities?: string;
+    energy?: number;
+  }): Promise<Review> {
+    const response = await apiClient.post<Review>('/reviews/generate', {
+      type,
+      date,
+      ...reflectionData,
+    });
     return response.data;
   },
 
