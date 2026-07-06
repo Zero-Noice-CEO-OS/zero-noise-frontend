@@ -114,3 +114,18 @@ export function useUpdateDeepWorkMutation() {
     },
   });
 }
+
+export function useDeepWorkWeeklyHistory(params?: {
+  goalId?: string;
+  week?: string;
+  from?: string;
+  to?: string;
+  minDuration?: string;
+}) {
+  const { authReady, user } = useAuth();
+  return useQuery({
+    queryKey: ['deepWorkWeeklyHistory', params],
+    queryFn: () => deepWorkService.getWeeklyHistory(params),
+    enabled: authReady && !!user,
+  });
+}

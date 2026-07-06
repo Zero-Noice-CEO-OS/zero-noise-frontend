@@ -338,36 +338,36 @@ export default function DeepWork() {
             </button>
           </div>
         ) : (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
+          <div className="flex flex-col items-stretch gap-3.5 w-full max-w-sm mt-4">
             {activeSessionQuery.data.status === 'PAUSED' || !running ? (
               <button
                 onClick={handleResume}
                 disabled={resumeMutation.isPending}
-                className="flex-1 h-11 px-3 rounded-button bg-surface border border-border text-textPrimary text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-background/80 transition-all"
+                className="w-full h-12 rounded-xl bg-white dark:bg-surface border border-border text-textPrimary text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-gray-50 dark:hover:bg-border/60 active:scale-[0.99] transition-all"
               >
-                <Play size={14} strokeWidth={2.2} /> Resume
+                <Play size={16} strokeWidth={2.2} /> Resume Focus
               </button>
             ) : (
               <button
                 onClick={handlePause}
                 disabled={pauseMutation.isPending}
-                className="flex-1 h-11 px-3 rounded-button bg-surface border border-border text-textPrimary text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-background/80 transition-all"
+                className="w-full h-12 rounded-xl bg-white dark:bg-surface border border-border text-textPrimary text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-gray-50 dark:hover:bg-border/60 active:scale-[0.99] transition-all"
               >
-                <Pause size={14} strokeWidth={2.2} /> Pause
+                <Pause size={16} strokeWidth={2.2} /> Pause Session
               </button>
             )}
             <button
               onClick={handleLogInterruption}
               disabled={updateMutation.isPending}
-              className="flex-1 h-11 px-3 rounded-button bg-accent text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-md"
+              className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md hover:opacity-95 active:scale-[0.99] transition-all"
             >
-              ⚠️ Log Interruption
+              <AlertCircle size={16} /> Log Interruption
             </button>
             <button
               onClick={handleStopClick}
-              className="flex-1 h-11 px-3 rounded-button bg-danger text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-md"
+              className="w-full h-12 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md hover:opacity-95 active:scale-[0.99] transition-all"
             >
-              <Square size={14} strokeWidth={2.2} /> Complete
+              <Square size={14} strokeWidth={2.2} /> Complete Focus Session
             </button>
           </div>
         )}
@@ -466,24 +466,48 @@ export default function DeepWork() {
       {/* Weekly Breakdown Bar Chart */}
       {analytics?.weeklyHistory && (
         <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card hover:shadow-hover transition-all duration-300 space-y-4">
-          <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider">Weekly Focus Stats</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider">Weekly Focus Stats</h3>
+            <Link
+              href="/deep-work/history"
+              className="text-xs font-bold text-primary hover:text-primary-hover hover:underline transition-colors"
+            >
+              View History &rarr;
+            </Link>
+          </div>
           <div className="h-44 w-full flex items-end justify-between pt-4 px-2">
-            {analytics.weeklyHistory.map((d: any, i) => (
-              <div key={i} onClick={() => handleDayClick(d)} className="flex flex-col items-center gap-2 w-full group cursor-pointer hover:scale-105 transition-all">
-                <span className="text-[10px] font-bold text-textSecondary opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  {d.minutes}m
-                </span>
-                <div className="w-8 sm:w-10 bg-background dark:bg-border rounded-t-button relative overflow-hidden h-28">
-                  <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: `${Math.min(100, (d.minutes / 240) * 100)}%` }}
-                    transition={{ type: 'spring', delay: i * 0.05, duration: 0.8 }}
-                    className="absolute bottom-0 left-0 right-0 bg-primary group-hover:bg-accent transition-colors rounded-t-button"
-                  />
+            {(() => {
+              const maxMins = Math.max(...analytics.weeklyHistory.map((d: any) => d.minutes || 0), 60);
+              return analytics.weeklyHistory.map((d: any, i: number) => (
+                <div
+                  key={i}
+                  onClick={() => !d.isFuture && handleDayClick(d)}
+                  className={`flex flex-col items-center gap-1.5 w-full group ${!d.isFuture ? 'cursor-pointer hover:scale-105' : 'opacity-70'} transition-all`}
+                >
+                  <span className="text-[10px] font-bold text-textSecondary opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    {d.minutes}m
+                  </span>
+                  <div className="w-8 sm:w-10 bg-background dark:bg-border rounded-t-button relative overflow-hidden h-24">
+                    {!d.isFuture ? (
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: `${(d.minutes / maxMins) * 100}%` }}
+                        transition={{ type: 'spring', delay: i * 0.05, duration: 0.8 }}
+                        className="absolute bottom-0 left-0 right-0 bg-primary group-hover:bg-accent transition-colors rounded-t-button"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-textSecondary/5 border border-dashed border-textSecondary/10 rounded-t-button flex items-center justify-center" title="Coming soon">
+                        <span className="text-[8px] text-textSecondary/40 rotate-90 whitespace-nowrap font-bold">FUTURE</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-center leading-none text-center">
+                    <span className="text-[10px] text-textSecondary font-bold">{d.day}</span>
+                    <span className="text-[9px] text-textSecondary/50 font-medium mt-0.5">{d.dateStr}</span>
+                  </div>
                 </div>
-                <span className="text-xs text-textSecondary font-semibold whitespace-nowrap">{d.dateStr || d.day}</span>
-              </div>
-            ))}
+              ));
+            })()}
           </div>
         </div>
       )}

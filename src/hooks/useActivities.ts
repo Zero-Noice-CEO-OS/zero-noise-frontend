@@ -96,3 +96,18 @@ export function useActivitySummary(params?: { from?: string; to?: string }) {
     enabled: authReady && !!user,
   });
 }
+
+export function useActivitiesWeeklyHistory(params?: {
+  category?: string;
+  goalId?: string;
+  week?: string;
+  from?: string;
+  to?: string;
+}) {
+  const { authReady, user } = useAuth();
+  return useQuery({
+    queryKey: ['activitiesWeeklyHistory', params],
+    queryFn: () => activityService.getWeeklyHistory(params),
+    enabled: authReady && !!user,
+  });
+}

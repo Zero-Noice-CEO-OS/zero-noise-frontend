@@ -36,6 +36,7 @@ export interface ActivitySummary {
     noisePercentage: number;
     recommendation: string;
   };
+  weeklyHistory?: Array<{ day: string; dateStr: string; minutes: number; isFuture: boolean }>;
 }
 
 export const activityService = {
@@ -104,6 +105,33 @@ export const activityService = {
     const from = params?.from || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const to = params?.to || new Date().toISOString().split('T')[0];
     const response = await apiClient.get<ActivitySummary>('/activities/summary', { params: { from, to } });
+    return response.data;
+  },
+
+  async getWeeklyHistory(params?: {
+    category?: string;
+    goalId?: string;
+    week?: string;
+    from?: string;
+    to?: string;
+  }): Promise<{
+    weeks: Array<{ weekNumber: number; label: string; startDate: string; endDate: string }>;
+    selectedWeek: {
+      weekNumber: number;
+      label: string;
+      startDate: string;
+      endDate: string;
+      days: Array<{
+        date: string;
+        dayName: string;
+        dateStr: string;
+        totalMinutes: number;
+        isFuture: boolean;
+      }>;
+      activities: Activity[];
+    } | null;
+  }> {
+    const response = await apiClient.get('/activities/weekly-history', { params });
     return response.data;
   },
 };

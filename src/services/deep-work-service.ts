@@ -32,7 +32,7 @@ export interface DeepWorkAnalytics {
   weeklyTotalMinutes: number;
   averageSessionMinutes: number;
   streakDays: number;
-  weeklyHistory: Array<{ day: string; minutes: number }>;
+  weeklyHistory: Array<{ day: string; dateStr?: string; minutes: number; isFuture?: boolean }>;
 }
 
 export const deepWorkService = {
@@ -95,6 +95,33 @@ export const deepWorkService = {
 
   async getAnalytics(): Promise<DeepWorkAnalytics> {
     const response = await apiClient.get<DeepWorkAnalytics>('/deep-work/analytics');
+    return response.data;
+  },
+
+  async getWeeklyHistory(params?: {
+    goalId?: string;
+    week?: string;
+    from?: string;
+    to?: string;
+    minDuration?: string;
+  }): Promise<{
+    weeks: Array<{ weekNumber: number; label: string; startDate: string; endDate: string }>;
+    selectedWeek: {
+      weekNumber: number;
+      label: string;
+      startDate: string;
+      endDate: string;
+      days: Array<{
+        date: string;
+        dayName: string;
+        dateStr: string;
+        minutes: number;
+        isFuture: boolean;
+      }>;
+      sessions: DeepWorkSession[];
+    } | null;
+  }> {
+    const response = await apiClient.get('/deep-work/weekly-history', { params });
     return response.data;
   },
 };

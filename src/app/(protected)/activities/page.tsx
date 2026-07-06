@@ -211,27 +211,56 @@ export default function Activities() {
         <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card hover:shadow-hover transition-all duration-300 lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider">Weekly Output</h3>
-            <span className="text-xs text-textSecondary">
-              {summary ? `Total Hours: ${Math.round((summary.totalDurationMinutes || 0) / 60 * 10) / 10}h` : '0h'}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-textSecondary font-semibold">
+                {summary ? `Total Hours: ${Math.round((summary.totalDurationMinutes || 0) / 60 * 10) / 10}h` : '0h'}
+              </span>
+              <Link
+                href="/activities/history"
+                className="text-xs font-bold text-primary hover:text-primary-hover hover:underline transition-colors"
+              >
+                View History &rarr;
+              </Link>
+            </div>
           </div>
           <div className="h-44 w-full flex items-end justify-between pt-4 px-2">
-            {weeklyOutputMock.map((d, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 w-full group">
-                <span className="text-[10px] font-bold text-textSecondary opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  {d.hrs}h
-                </span>
-                <div className="w-8 sm:w-10 bg-background dark:bg-border rounded-t-button relative overflow-hidden h-28">
-                  <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: `${(d.hrs / 10) * 100}%` }}
-                    transition={{ type: 'spring', delay: i * 0.05, duration: 0.8 }}
-                    className="absolute bottom-0 left-0 right-0 bg-primary group-hover:bg-accent transition-colors rounded-t-button"
-                  />
-                </div>
-                <span className="text-xs text-textSecondary font-semibold">{d.day}</span>
+            {summary?.weeklyHistory && summary.weeklyHistory.length > 0 ? (
+              (() => {
+                const maxMins = Math.max(...summary.weeklyHistory.map((d: any) => d.minutes || 0), 60);
+                return summary.weeklyHistory.map((d: any, i: number) => {
+                  const hrsVal = Math.round((d.minutes / 60) * 10) / 10;
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1.5 w-full group">
+                      <span className="text-[10px] font-bold text-textSecondary opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        {hrsVal}h
+                      </span>
+                      <div className="w-8 sm:w-10 bg-background dark:bg-border rounded-t-button relative overflow-hidden h-24">
+                        {!d.isFuture ? (
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: `${(d.minutes / maxMins) * 100}%` }}
+                            transition={{ type: 'spring', delay: i * 0.05, duration: 0.8 }}
+                            className="absolute bottom-0 left-0 right-0 bg-primary group-hover:bg-accent transition-colors rounded-t-button"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-textSecondary/5 border border-dashed border-textSecondary/10 rounded-t-button flex items-center justify-center" title="Coming soon">
+                            <span className="text-[8px] text-textSecondary/40 rotate-90 whitespace-nowrap font-bold">FUTURE</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-center leading-none text-center">
+                        <span className="text-[10px] text-textSecondary font-bold">{d.day}</span>
+                        <span className="text-[9px] text-textSecondary/50 font-medium mt-0.5">{d.dateStr}</span>
+                      </div>
+                    </div>
+                  );
+                });
+              })()
+            ) : (
+              <div className="w-full text-center text-xs text-textSecondary/50 italic py-10">
+                Loading weekly metrics...
               </div>
-            ))}
+            )}
           </div>
         </div>
 
