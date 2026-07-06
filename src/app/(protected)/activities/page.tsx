@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Modal from '@/components/Modal'
 import { useActivities, useCreateActivityMutation, useUpdateActivityMutation, useDeleteActivityMutation, useActivitySummary } from '@/hooks/useActivities'
 import { useGoals } from '@/hooks/useGoals'
+import NoiseAlert from '@/components/NoiseAlert'
 
 const categories = ['All', 'Build', 'Sell', 'Lead', 'Learn', 'Maintain', 'Waste']
 
@@ -323,17 +324,7 @@ export default function Activities() {
       {/* Activities Timeline / Cards Stack */}
       <div className="space-y-4 max-w-4xl">
         {/* Noise Alert Banner */}
-        {summary?.noiseAlerts?.noiseDetected && (
-          <div className="bg-danger/10 border border-danger/20 rounded-card p-4 flex items-start gap-3 mb-2">
-            <AlertCircle className="text-danger shrink-0 mt-0.5" size={16} />
-            <div>
-              <h4 className="text-xs font-bold text-textPrimary uppercase tracking-wider">High Noise Alert</h4>
-              <p className="text-xs text-textSecondary mt-1">
-                Your Waste activities exceed 20% of total logged time ({summary.noiseAlerts.noisePercentage}%). {summary.noiseAlerts.recommendation}
-              </p>
-            </div>
-          </div>
-        )}
+        <NoiseAlert data={summary?.noiseAlerts} />
         {activitiesQuery.isLoading ? (
           <div className="bg-surface/50 border border-border rounded-card p-12 flex flex-col items-center justify-center min-h-[200px]">
             <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />

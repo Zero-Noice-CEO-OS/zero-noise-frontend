@@ -38,6 +38,8 @@ export function useCreateActivityMutation() {
       queryClient.invalidateQueries({ queryKey: ['activitySummary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardToday'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardWeek'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
     },
   });
 }
@@ -64,6 +66,8 @@ export function useUpdateActivityMutation() {
       queryClient.invalidateQueries({ queryKey: ['activitySummary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardToday'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardWeek'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
     },
   });
 }
@@ -78,6 +82,8 @@ export function useDeleteActivityMutation() {
       queryClient.invalidateQueries({ queryKey: ['activitySummary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardToday'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardWeek'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
     },
   });
 }

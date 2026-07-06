@@ -7,7 +7,8 @@ import { Timer, Target, Brain, Plus, Play, Calendar, Zap, MessageSquare, Trendin
 import Modal from '@/components/Modal'
 import { useAuth } from '@/context/AuthContext'
 import { useDashboardSummary, useDashboardToday, useDashboardWeek, useDashboardAnalytics } from '@/hooks/useDashboard'
-import { useCreateActivityMutation } from '@/hooks/useActivities'
+import { useCreateActivityMutation, useActivitySummary } from '@/hooks/useActivities'
+import NoiseAlert from '@/components/NoiseAlert'
 
 export default function Dashboard() {
   const [activityModal, setActivityModal] = useState(false)
@@ -52,6 +53,7 @@ export default function Dashboard() {
   const todayOverviewQuery = useDashboardToday()
   const weekOverviewQuery = useDashboardWeek()
   const analyticsQuery = useDashboardAnalytics()
+  const activitySummaryQuery = useActivitySummary()
 
   // Current Date formatting
   const todayDate = new Date().toLocaleDateString('en-US', {
@@ -84,7 +86,7 @@ export default function Dashboard() {
     return `${h}h ${m}m`
   }
 
-  const isLoading = summaryQuery.isLoading || todayOverviewQuery.isLoading || weekOverviewQuery.isLoading || analyticsQuery.isLoading
+  const isLoading = summaryQuery.isLoading || todayOverviewQuery.isLoading || weekOverviewQuery.isLoading || analyticsQuery.isLoading || activitySummaryQuery.isLoading
 
   if (isLoading) {
     return (
@@ -127,6 +129,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 pb-16">
+      {/* Noise Alert Banner */}
+      <NoiseAlert data={activitySummaryQuery.data?.noiseAlerts} />
+
       {/* Top Welcome / Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div className="flex items-center gap-4">

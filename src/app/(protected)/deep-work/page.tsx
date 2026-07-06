@@ -7,6 +7,7 @@ import Modal from '@/components/Modal'
 import { useActiveSession, useDeepWorkAnalytics, useDeepWorkHistory, useStartDeepWorkMutation, usePauseDeepWorkMutation, useResumeDeepWorkMutation, useCompleteDeepWorkMutation, useUpdateDeepWorkMutation } from '@/hooks/useDeepWork'
 import { useGoals } from '@/hooks/useGoals'
 import Link from 'next/link'
+import { deepWorkService } from '@/services/deep-work-service'
 
 export default function DeepWork() {
   const [seconds, setSeconds] = useState(0)
@@ -24,6 +25,11 @@ export default function DeepWork() {
   const [interruptions, setInterruptions] = useState<number>(0)
   const [outputNotes, setOutputNotes] = useState('')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  const [viewDayOpen, setViewDayOpen] = useState(false)
+  const [loadingDaySessions, setLoadingDaySessions] = useState(false)
+  const [selectedDayName, setSelectedDayName] = useState('')
+  const [selectedDaySessions, setSelectedDaySessions] = useState<any[] | null>(null)
 
   // Queries & Mutations
   const activeSessionQuery = useActiveSession()
@@ -183,6 +189,29 @@ export default function DeepWork() {
       } catch (e) {
         console.error(e)
       }
+    }
+  }
+
+  const handleDayClick = async (d: any) => {
+    setSelectedDayName(d.dateStr || d.day)
+    setLoadingDaySessions(true)
+    setViewDayOpen(true)
+    try {
+      const today = new Date();
+      const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf((d.dateStr || '').split(' ')[1]);
+      const dayNum = Number((d.dateStr || '').split(' ')[0]);
+      const targetDate = isNaN(dayNum) || monthIndex === -1 ? today : new Date(today.getFullYear(), monthIndex, dayNum);
+      
+      const fromStr = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()).toISOString().split('T')[0];
+      const toStr = fromStr;
+      
+      const res = await deepWorkService.getHistory({ from: fromStr, to: toStr, limit: 100 });
+      setSelectedDaySessions((res.data || []).filter((s: any) => s.status === 'COMPLETED'));
+    } catch (e) {
+      console.error(e);
+      setSelectedDaySessions([]);
+    } finally {
+      setLoadingDaySessions(false);
     }
   }
 
@@ -439,8 +468,8 @@ export default function DeepWork() {
         <div className="bg-surface/50 border border-border rounded-card p-6 shadow-card hover:shadow-hover transition-all duration-300 space-y-4">
           <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider">Weekly Focus Stats</h3>
           <div className="h-44 w-full flex items-end justify-between pt-4 px-2">
-            {analytics.weeklyHistory.map((d, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 w-full group">
+            {analytics.weeklyHistory.map((d: any, i) => (
+              <div key={i} onClick={() => handleDayClick(d)} className="flex flex-col items-center gap-2 w-full group cursor-pointer hover:scale-105 transition-all">
                 <span className="text-[10px] font-bold text-textSecondary opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   {d.minutes}m
                 </span>
@@ -452,7 +481,7 @@ export default function DeepWork() {
                     className="absolute bottom-0 left-0 right-0 bg-primary group-hover:bg-accent transition-colors rounded-t-button"
                   />
                 </div>
-                <span className="text-xs text-textSecondary font-semibold">{d.day}</span>
+                <span className="text-xs text-textSecondary font-semibold whitespace-nowrap">{d.dateStr || d.day}</span>
               </div>
             ))}
           </div>
@@ -545,6 +574,47 @@ export default function DeepWork() {
             </button>
           </div>
         </form>
+      </Modal>
+      {/* View Day Sessions Modal */}
+      <Modal open={viewDayOpen} onClose={() => setViewDayOpen(false)} title={`Focus Logs - ${selectedDayName}`}>
+        <div className="space-y-4">
+          {loadingDaySessions ? (
+            <div className="py-8 text-center text-xs text-textSecondary font-bold animate-pulse">Loading focus sessions...</div>
+          ) : !selectedDaySessions || selectedDaySessions.length === 0 ? (
+            <p className="text-xs text-textSecondary italic text-center py-6">No completed focus sessions recorded on this day.</p>
+          ) : (
+            <div className="space-y-4 divide-y divide-border/30 max-h-[400px] overflow-y-auto pr-1">
+              {selectedDaySessions.map((s, idx) => (
+                <div key={s.id} className={`pt-4 ${idx === 0 ? 'pt-0' : ''}`}>
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-textPrimary text-sm">
+                        {new Date(s.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {s.endedAt ? new Date(s.endedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Ongoing'}
+                      </p>
+                      <p className="text-xs text-textSecondary">{s.output || 'No output details.'}</p>
+                      {s.interruptions > 0 && (
+                        <p className="text-[10px] text-danger/80 font-bold mt-1">
+                          ⚠️ {s.interruptions} {s.interruptions === 1 ? 'interruption' : 'interruptions'} logged
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full inline-block">
+                        {s.actualDurationMinutes || s.plannedDurationMinutes || 0} min
+                      </span>
+                      <div className="text-[10px] font-extrabold text-success mt-1">
+                        Score: {s.deepWorkScore ?? 0}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-end pt-4 border-t border-border/40">
+            <button onClick={() => setViewDayOpen(false)} className="px-4 py-2 rounded-button bg-surface border border-border text-textPrimary text-xs font-bold hover:bg-background/80 transition-all">Close</button>
+          </div>
+        </div>
       </Modal>
       {/* Toast Notification */}
       <AnimatePresence>

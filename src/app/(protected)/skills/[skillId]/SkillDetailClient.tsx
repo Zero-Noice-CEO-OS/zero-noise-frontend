@@ -15,13 +15,13 @@ export default function SkillDetail() {
   const [logOpen, setLogOpen] = useState(false)
   
   // Slider states for Speed, Quality, Consistency, Depth, Retention, Application, Confidence
-  const [speed, setSpeed] = useState(7)
-  const [quality, setQuality] = useState(8)
-  const [consistency, setConsistency] = useState(7)
-  const [depth, setDepth] = useState(7)
-  const [retention, setRetention] = useState(7)
-  const [application, setApplication] = useState(7)
-  const [confidence, setConfidence] = useState(7)
+  const [speed, setSpeed] = useState(0)
+  const [quality, setQuality] = useState(0)
+  const [consistency, setConsistency] = useState(0)
+  const [depth, setDepth] = useState(0)
+  const [retention, setRetention] = useState(0)
+  const [application, setApplication] = useState(0)
+  const [confidence, setConfidence] = useState(0)
   const [notes, setNotes] = useState('')
 
   // Queries & Mutations
@@ -35,15 +35,27 @@ export default function SkillDetail() {
   // Update slider states based on latest entry if available
   useEffect(() => {
     if (entries.length > 0) {
-      setSpeed(entries[0].speed || 7)
-      setQuality(entries[0].quality || 8)
-      setConsistency(entries[0].consistency || 7)
-      setDepth(entries[0].depth || 7)
-      setRetention(entries[0].retention || 7)
-      setApplication(entries[0].application || 7)
-      setConfidence(entries[0].confidence || 7)
+      setSpeed(entries[0].speed || 0)
+      setQuality(entries[0].quality || 0)
+      setConsistency(entries[0].consistency || 0)
+      setDepth(entries[0].depth || 0)
+      setRetention(entries[0].retention || 0)
+      setApplication(entries[0].application || 0)
+      setConfidence(entries[0].confidence || 0)
     }
   }, [entries])
+
+  useEffect(() => {
+    if (logOpen && entries.length === 0) {
+      setSpeed(5)
+      setQuality(5)
+      setConsistency(5)
+      setDepth(5)
+      setRetention(5)
+      setApplication(5)
+      setConfidence(5)
+    }
+  }, [logOpen, entries])
 
   const handleLogSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -117,7 +129,7 @@ export default function SkillDetail() {
     getPt(application, 5),
     getPt(confidence, 6)
   ].join(' ')
-  const formattedScore = Math.round(skill.currentScore * 10) / 10
+  const formattedScore = entries.length === 0 ? 0 : Math.round(skill.currentScore * 10) / 10
 
   return (
     <div className="space-y-6 pb-16 animate-fade-in">
@@ -127,7 +139,22 @@ export default function SkillDetail() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
-          <h1 className="text-3xl font-black text-textPrimary tracking-tight">{skill.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-black text-textPrimary tracking-tight">{skill.name}</h1>
+            {(() => {
+              const PREDEFINED_SKILLS = [
+                'Reading', 'Writing', 'Speaking', 'Articulation', 'Storytelling',
+                'Strategy', 'Decision Making', 'Listening', 'Information Processing',
+                'Negotiation', 'Leadership'
+              ]
+              const isPredefined = PREDEFINED_SKILLS.includes(skill.name)
+              return (
+                <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-badge border ${isPredefined ? 'bg-primary/10 border-primary/25 text-primary' : 'bg-accent/10 border-accent/25 text-accent'}`}>
+                  {isPredefined ? 'Predefined' : 'Custom'}
+                </span>
+              )
+            })()}
+          </div>
           <p className="text-xs text-textSecondary font-semibold mt-1">Configure parameters and track historical entries logs.</p>
         </div>
         <button

@@ -75,6 +75,11 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+let onAuthFailure: (() => void) | null = null;
+export const registerAuthFailureCallback = (callback: () => void) => {
+  onAuthFailure = callback;
+};
+
 // Response interceptor to handle token refresh and envelope unwrapping
 apiClient.interceptors.response.use(
   (response) => {
@@ -91,6 +96,19 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
+      const sessionActive = typeof window !== 'undefined' && localStorage.getItem('session_active') === 'true';
+      if (!sessionActive) {
+        setAccessToken(null);
+        if (onAuthFailure) onAuthFailure();
+        if (
+          typeof window !== 'undefined' &&
+          !window.location.pathname.startsWith('/login') &&
+          !window.location.pathname.startsWith('/signup')
+        ) {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
       originalRequest._retry = true;
 
       try {
@@ -98,17 +116,14 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError: any) {
-        const status = refreshError.response?.status;
-        if (status === 401) {
-          setAccessToken(null);
-          // Redirect to login if in browser
-          if (
-            typeof window !== 'undefined' &&
-            !window.location.pathname.startsWith('/login') &&
-            !window.location.pathname.startsWith('/signup')
-          ) {
-            window.location.href = '/login';
-          }
+        setAccessToken(null);
+        if (onAuthFailure) onAuthFailure();
+        if (
+          typeof window !== 'undefined' &&
+          !window.location.pathname.startsWith('/login') &&
+          !window.location.pathname.startsWith('/signup')
+        ) {
+          window.location.href = '/login';
         }
         return Promise.reject(refreshError);
       }

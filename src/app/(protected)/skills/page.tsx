@@ -134,7 +134,8 @@ export default function Skills() {
             const currentVal = Math.round(skill.currentScore * 10) / 10
             const displayProgress = skill.currentScore * 10
             const trendStr = skill.currentScore >= skill.baselineScore ? `+${(skill.currentScore - skill.baselineScore).toFixed(1)}` : `${(skill.currentScore - skill.baselineScore).toFixed(1)}`
-            const mockSparkline = [skill.baselineScore, skill.baselineScore + 0.2, skill.baselineScore + 0.3, skill.currentScore - 0.2, skill.currentScore]
+            const realSparkline = [skill.baselineScore, skill.currentScore]
+            const sparklineD = `M 0,${(30 - Math.min(10, Math.max(0, realSparkline[0])) * 3).toFixed(1)} L 100,${(30 - Math.min(10, Math.max(0, realSparkline[1])) * 3).toFixed(1)}`
 
             return (
               <Link key={skill.id} href={`/skills/detail/?id=${skill.id}`}>
@@ -142,6 +143,7 @@ export default function Skills() {
                   whileHover={{ y: -3 }}
                   className="bg-surface/50 border border-border rounded-card p-6 shadow-card hover:shadow-hover hover:border-primary/20 transition-all duration-300 flex flex-col justify-between h-[230px] group relative overflow-hidden animate-fade-in"
                 >
+                  {/* Header info */}
                   {/* Header info */}
                   <div>
                     <div className="flex items-start justify-between">
@@ -164,7 +166,7 @@ export default function Skills() {
                     <div className="h-10 w-full opacity-80 group-hover:opacity-100 transition-opacity">
                       <svg viewBox="0 0 100 30" className="w-full h-full text-accent stroke-current fill-none">
                         <path
-                          d={`M ${mockSparkline.map((val, idx) => `${(idx * 100) / 4},${30 - (val - 1) * 3}`).join(' L ')}`}
+                          d={sparklineD}
                           strokeWidth="2.5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -180,6 +182,9 @@ export default function Skills() {
                           style={{ width: `${displayProgress}%` }}
                         />
                       </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="text-[10px] text-textSecondary font-bold group-hover:text-primary transition-colors">View Details &rarr;</span>
                     </div>
                   </div>
                 </motion.div>

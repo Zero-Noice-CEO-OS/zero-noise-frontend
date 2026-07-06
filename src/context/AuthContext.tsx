@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { User, authService } from '@/services/auth-service';
-import { setAccessToken, apiClient } from '@/services/api-client';
+import { setAccessToken, apiClient, registerAuthFailureCallback } from '@/services/api-client';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(accessToken);
     setUserState(user);
     setAuthReady(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('session_active', 'true');
+    }
   };
 
   const logout = async () => {
@@ -59,12 +62,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserState(null);
       setAuthReady(false);
       if (typeof window !== 'undefined') {
+        localStorage.removeItem('session_active');
         window.location.href = '/login';
       }
     }
   };
 
   useEffect(() => {
+    registerAuthFailureCallback(() => {
+      setUserState(null);
+      setAuthReady(false);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('session_active');
+      }
+    });
+
     let active = true;
     const initAuth = async () => {
       try {
@@ -73,6 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[Auth] Refresh successful.');
         if (active) {
           setAccessToken(refreshRes.accessToken);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('session_active', 'true');
+          }
           const meRes = await apiClient.get<User>('/users/me');
           setUserState(meRes.data);
           console.log('[Auth] Session restored.');
@@ -81,6 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (active) {
           setAccessToken(null);
           setUserState(null);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('session_active');
+          }
         }
 
         const status = err?.response?.status;

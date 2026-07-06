@@ -88,7 +88,7 @@ export const deepWorkService = {
     }
   },
 
-  async getHistory(params?: { page?: number; limit?: number }): Promise<PaginatedDeepWork> {
+  async getHistory(params?: { page?: number; limit?: number; from?: string; to?: string }): Promise<PaginatedDeepWork> {
     const response = await apiClient.get<PaginatedDeepWork>('/deep-work', { params });
     return response.data;
   },

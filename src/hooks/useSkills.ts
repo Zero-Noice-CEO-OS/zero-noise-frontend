@@ -47,6 +47,9 @@ export function useCreateSkillMutation() {
       queryClient.invalidateQueries({ queryKey: ['skills'] });
       queryClient.invalidateQueries({ queryKey: ['skillsSummary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardToday'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardWeek'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
     },
   });
 }
@@ -77,6 +80,9 @@ export function useLogSkillEntryMutation() {
       queryClient.invalidateQueries({ queryKey: ['skills'] });
       queryClient.invalidateQueries({ queryKey: ['skillsSummary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardToday'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardWeek'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
     },
   });
 }
@@ -89,6 +95,10 @@ export function useUpdateSkillMutation() {
     onSuccess: (updatedSkill) => {
       queryClient.invalidateQueries({ queryKey: ['skill', updatedSkill.id] });
       queryClient.invalidateQueries({ queryKey: ['skills'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardToday'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardWeek'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
     },
   });
 }
@@ -101,6 +111,10 @@ export function useArchiveSkillMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['skills'] });
       queryClient.invalidateQueries({ queryKey: ['skillsSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardToday'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardWeek'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
     },
   });
 }
