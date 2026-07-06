@@ -7,6 +7,12 @@ import { Plus, TrendingUp, Award, Brain, Activity } from 'lucide-react'
 import Modal from '@/components/Modal'
 import { useSkills, useSkillsSummary, useCreateSkillMutation } from '@/hooks/useSkills'
 
+const PREDEFINED_SKILLS = [
+  'Reading', 'Writing', 'Speaking', 'Articulation', 'Storytelling',
+  'Strategy', 'Decision Making', 'Listening', 'Information Processing',
+  'Negotiation', 'Leadership'
+]
+
 export default function Skills() {
   const [addOpen, setAddOpen] = useState(false)
   const [name, setName] = useState('')
@@ -16,6 +22,20 @@ export default function Skills() {
   const skillsQuery = useSkills()
   const summaryQuery = useSkillsSummary()
   const createMutation = useCreateSkillMutation()
+
+  const skills = skillsQuery.data?.data || []
+  const summary = summaryQuery.data
+
+  // Filter out skills that are already active to prevent duplicates
+  const availableSkills = PREDEFINED_SKILLS.filter(
+    (skillName) => !skills.some((s: any) => s.name === skillName && !s.archived)
+  )
+
+  const handleOpenAdd = () => {
+    setName(availableSkills[0] || '')
+    setBaselineScore(5)
+    setAddOpen(true)
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,9 +50,6 @@ export default function Skills() {
     }
   }
 
-  const skills = skillsQuery.data?.data || []
-  const summary = summaryQuery.data
-
   return (
     <div className="space-y-8 pb-16">
       {/* Header */}
@@ -42,7 +59,7 @@ export default function Skills() {
           <p className="text-xs text-textSecondary mt-1">Refine core executive capabilities with structured logs.</p>
         </div>
         <button
-          onClick={() => setAddOpen(true)}
+          onClick={handleOpenAdd}
           className="px-4 py-2.5 rounded-button bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90 active:scale-95 transition-all text-xs font-bold flex items-center gap-1.5 shadow-md"
         >
           <Plus size={16} strokeWidth={2.2} /> Add Skill
@@ -75,7 +92,7 @@ export default function Skills() {
         </div>
         <div className="bg-surface/50 border border-border rounded-card p-5 shadow-card hover:shadow-hover transition-all duration-300 flex items-center gap-4">
           <div className="p-3 bg-success/10 text-success rounded-xl">
-            <Activity size={20} strokeWidth={2} />
+            <Award size={20} strokeWidth={2} />
           </div>
           <div>
             <p className="text-[10px] font-bold text-textSecondary uppercase tracking-wider">Monthly growth</p>
@@ -162,13 +179,18 @@ export default function Skills() {
         <form className="space-y-4" onSubmit={handleSave}>
           <div className="space-y-1.5">
             <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Skill Name</label>
-            <input
-              required
+            <select
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
-              placeholder="e.g., Leadership"
-            />
+              className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+            >
+              {availableSkills.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+              {availableSkills.length === 0 && (
+                <option value="">No skills available (all tracked)</option>
+              )}
+            </select>
           </div>
           <div className="space-y-1.5">
             <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Baseline Score (1-10)</label>

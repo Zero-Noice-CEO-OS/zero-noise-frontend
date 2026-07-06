@@ -31,12 +31,11 @@ export interface ActivitySummary {
   categoryAllocation: Record<string, number>;
   averageValueScore: number;
   noiseAlertsCount: number;
-  noiseAlerts: Array<{
-    id: string;
-    title: string;
-    message: string;
-    severity: string;
-  }>;
+  noiseAlerts: {
+    noiseDetected: boolean;
+    noisePercentage: number;
+    recommendation: string;
+  };
 }
 
 export const activityService = {
@@ -59,6 +58,7 @@ export const activityService = {
     category: string;
     durationMinutes: number;
     valueScore: number;
+    goalId?: string | null;
     startedAt?: string;
     endedAt?: string;
   }): Promise<Activity> {
@@ -84,6 +84,7 @@ export const activityService = {
       category?: string;
       durationMinutes?: number;
       valueScore?: number;
+      goalId?: string | null;
     }
   ): Promise<Activity> {
     const updatePayload: any = { ...data };

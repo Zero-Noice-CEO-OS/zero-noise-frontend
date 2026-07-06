@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import { Plus, Pencil, Trash2, Calendar, Clock, Star, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
 import Modal from '@/components/Modal'
 import { useActivities, useCreateActivityMutation, useUpdateActivityMutation, useDeleteActivityMutation, useActivitySummary } from '@/hooks/useActivities'
+import { useGoals } from '@/hooks/useGoals'
 
 const categories = ['All', 'Build', 'Sell', 'Lead', 'Learn', 'Maintain', 'Waste']
 
@@ -44,6 +46,7 @@ export default function Activities() {
   const [category, setCategory] = useState<'Build' | 'Sell' | 'Lead' | 'Learn' | 'Maintain' | 'Waste'>('Build')
   const [duration, setDuration] = useState<number>(60)
   const [valueScore, setValueScore] = useState<number>(8)
+  const [goalId, setGoalId] = useState<string | null>(null)
 
   // Date Range calculation based on timeFilter
   const getDateRange = () => {
@@ -94,6 +97,7 @@ export default function Activities() {
   }
   const activitiesQuery = useActivities(queryParams)
   const summaryQuery = useActivitySummary()
+  const { data: goalsData } = useGoals({ status: 'Active' })
 
   // Mutations
   const createMutation = useCreateActivityMutation()
@@ -105,6 +109,7 @@ export default function Activities() {
     setCategory('Build')
     setDuration(60)
     setValueScore(8)
+    setGoalId(null)
     setAddOpen(true)
   }
 
@@ -115,6 +120,7 @@ export default function Activities() {
     setDuration(act.durationMinutes)
     // Map value score from 1-5 backend to 1-10 frontend
     setValueScore(act.valueScore * 2)
+    setGoalId(act.goalId || null)
     setEditOpen(true)
   }
 
@@ -129,7 +135,7 @@ export default function Activities() {
       if (editOpen && selectedActivityId) {
         await updateMutation.mutateAsync({
           id: selectedActivityId,
-          data: { title, category, durationMinutes: Number(duration), valueScore }
+          data: { title, category, durationMinutes: Number(duration), valueScore, goalId }
         })
         setEditOpen(false)
       } else {
@@ -137,7 +143,8 @@ export default function Activities() {
           title,
           category,
           durationMinutes: Number(duration),
-          valueScore
+          valueScore,
+          goalId
         })
         setAddOpen(false)
       }
@@ -315,6 +322,18 @@ export default function Activities() {
 
       {/* Activities Timeline / Cards Stack */}
       <div className="space-y-4 max-w-4xl">
+        {/* Noise Alert Banner */}
+        {summary?.noiseAlerts?.noiseDetected && (
+          <div className="bg-danger/10 border border-danger/20 rounded-card p-4 flex items-start gap-3 mb-2">
+            <AlertCircle className="text-danger shrink-0 mt-0.5" size={16} />
+            <div>
+              <h4 className="text-xs font-bold text-textPrimary uppercase tracking-wider">High Noise Alert</h4>
+              <p className="text-xs text-textSecondary mt-1">
+                Your Waste activities exceed 20% of total logged time ({summary.noiseAlerts.noisePercentage}%). {summary.noiseAlerts.recommendation}
+              </p>
+            </div>
+          </div>
+        )}
         {activitiesQuery.isLoading ? (
           <div className="bg-surface/50 border border-border rounded-card p-12 flex flex-col items-center justify-center min-h-[200px]">
             <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -341,13 +360,21 @@ export default function Activities() {
                     {(page - 1) * 10 + idx + 1}
                   </span>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-md font-bold text-textPrimary group-hover:text-primary transition-colors">
                         {a.title}
                       </h3>
                       <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-badge border ${categoryColors[a.category] || 'bg-secondary'}`}>
                         {a.category}
                       </span>
+                      {a.goalId && (() => {
+                        const linkedGoal = Array.isArray(goalsData?.data) ? goalsData.data.find((g: any) => g.id === a.goalId) : null;
+                        return (
+                          <Link href={`/goals/${a.goalId}`} className="text-[8px] font-extrabold uppercase px-2 py-0.5 rounded-badge border border-primary/25 bg-primary/10 text-primary hover:bg-primary/20 transition-all">
+                            🎯 {linkedGoal ? linkedGoal.title : 'Goal'}
+                          </Link>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center gap-4 text-xs text-textSecondary mt-2">
                       <span className="flex items-center gap-1 font-medium">
@@ -444,6 +471,19 @@ export default function Activities() {
               <option value="Learn">Learn</option>
               <option value="Maintain">Maintain</option>
               <option value="Waste">Waste</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Linked Goal (Optional)</label>
+            <select
+              value={goalId || ''}
+              onChange={(e) => setGoalId(e.target.value || null)}
+              className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+            >
+              <option value="">No Linked Goal</option>
+              {Array.isArray(goalsData?.data) && goalsData.data.map((g: any) => (
+                <option key={g.id} value={g.id}>{g.title}</option>
+              ))}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">

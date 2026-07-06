@@ -5,6 +5,7 @@ import { CheckCircle2, Sparkles, Smile, Meh, Frown, Award, Flame, RefreshCw, Sen
 import { motion, AnimatePresence } from 'framer-motion'
 import { useDailyLogByDate, useDailyLogsHistory, useMorningCheckInMutation, useEveningReviewMutation } from '@/hooks/useDailyLogs'
 import { useReviews, useGenerateReviewMutation } from '@/hooks/useReviews'
+import { useSkills } from '@/hooks/useSkills'
 
 export default function ReviewsHub() {
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'monthly'>('daily')
@@ -23,6 +24,7 @@ export default function ReviewsHub() {
   const todayLogQuery = useDailyLogByDate(selectedDate)
   const historyQuery = useDailyLogsHistory({ page: 1, limit: 10 })
   const morningMutation = useMorningCheckInMutation()
+  const { data: skillsData } = useSkills()
   const eveningMutation = useEveningReviewMutation()
 
   // Reviews list queries
@@ -236,12 +238,16 @@ export default function ReviewsHub() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Target Practice Skill</label>
-                    <input
+                    <select
                       value={mainSkill}
                       onChange={(e) => setMainSkill(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
-                      placeholder="e.g. Strategic Planning"
-                    />
+                      className="w-full px-3 py-2.5 border border-border rounded-input bg-surface text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-xs"
+                    >
+                      <option value="">No Skill Selected</option>
+                      {Array.isArray(skillsData?.data) && skillsData.data.map((s: any) => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Identified Risks</label>

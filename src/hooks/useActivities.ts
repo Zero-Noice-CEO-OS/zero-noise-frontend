@@ -29,6 +29,7 @@ export function useCreateActivityMutation() {
       category: string;
       durationMinutes: number;
       valueScore: number;
+      goalId?: string | null;
       startedAt?: string;
       endedAt?: string;
     }) => activityService.createActivity(data),
@@ -55,6 +56,7 @@ export function useUpdateActivityMutation() {
         category?: string;
         durationMinutes?: number;
         valueScore?: number;
+        goalId?: string | null;
       };
     }) => activityService.updateActivity(id, data),
     onSuccess: () => {

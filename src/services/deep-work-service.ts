@@ -66,6 +66,19 @@ export const deepWorkService = {
     return response.data;
   },
 
+  async updateSession(
+    id: string,
+    data: {
+      output?: string;
+      goalId?: string;
+      plannedDurationMinutes?: number;
+      interruptions?: number;
+    }
+  ): Promise<DeepWorkSession> {
+    const response = await apiClient.patch<DeepWorkSession>(`/deep-work/${id}`, data);
+    return response.data;
+  },
+
   async getActiveSession(): Promise<DeepWorkSession | null> {
     try {
       const response = await apiClient.get<{ active: boolean; session: DeepWorkSession | null }>('/deep-work/active');

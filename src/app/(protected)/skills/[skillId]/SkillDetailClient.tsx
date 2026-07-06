@@ -13,10 +13,14 @@ export default function SkillDetail() {
 
   const [logOpen, setLogOpen] = useState(false)
   
-  // Slider states for Speed, Quality, Consistency
+  // Slider states for Speed, Quality, Consistency, Depth, Retention, Application, Confidence
   const [speed, setSpeed] = useState(7)
   const [quality, setQuality] = useState(8)
   const [consistency, setConsistency] = useState(7)
+  const [depth, setDepth] = useState(7)
+  const [retention, setRetention] = useState(7)
+  const [application, setApplication] = useState(7)
+  const [confidence, setConfidence] = useState(7)
   const [notes, setNotes] = useState('')
 
   // Queries & Mutations
@@ -33,24 +37,26 @@ export default function SkillDetail() {
       setSpeed(entries[0].speed || 7)
       setQuality(entries[0].quality || 8)
       setConsistency(entries[0].consistency || 7)
+      setDepth(entries[0].depth || 7)
+      setRetention(entries[0].retention || 7)
+      setApplication(entries[0].application || 7)
+      setConfidence(entries[0].confidence || 7)
     }
   }, [entries])
 
   const handleLogSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      // Map extra dimensions required by backend validation constraints
-      const avgVal = Math.round((speed + quality + consistency) / 3)
       await logMutation.mutateAsync({
         id: skillId,
         data: {
           speed,
           quality,
           consistency,
-          depth: consistency,
-          retention: quality,
-          application: speed,
-          confidence: avgVal,
+          depth,
+          retention,
+          application,
+          confidence,
           notes: notes || undefined
         }
       })
@@ -88,7 +94,8 @@ export default function SkillDetail() {
   const cy = 50
   const r = 40
 
-  const getPt = (val: number, angleDeg: number) => {
+  const getPt = (val: number, index: number) => {
+    const angleDeg = index * (360 / 7)
     const rad = (angleDeg - 90) * (Math.PI / 180)
     const factor = val / 10
     const x = cx + r * factor * Math.cos(rad)
@@ -96,7 +103,19 @@ export default function SkillDetail() {
     return `${x.toFixed(1)},${y.toFixed(1)}`
   }
 
-  const polygonPoints = `${getPt(speed, 0)} ${getPt(quality, 120)} ${getPt(consistency, 240)}`
+  const getGridPoints = (scale: number) => {
+    return Array.from({ length: 7 }, (_, i) => getPt(scale, i)).join(' ')
+  }
+
+  const polygonPoints = [
+    getPt(speed, 0),
+    getPt(quality, 1),
+    getPt(consistency, 2),
+    getPt(depth, 3),
+    getPt(retention, 4),
+    getPt(application, 5),
+    getPt(confidence, 6)
+  ].join(' ')
   const formattedScore = Math.round(skill.currentScore * 10) / 10
 
   return (
@@ -127,7 +146,11 @@ export default function SkillDetail() {
             {[
               { label: 'Speed', val: speed, desc: 'Execution speed and agility' },
               { label: 'Quality', val: quality, desc: 'Fidelity of generated artifacts' },
-              { label: 'Consistency', val: consistency, desc: 'Daily execution stability' }
+              { label: 'Consistency', val: consistency, desc: 'Daily execution stability' },
+              { label: 'Depth', val: depth, desc: 'Comprehensive domain knowledge' },
+              { label: 'Retention', val: retention, desc: 'Information recall speed and precision' },
+              { label: 'Application', val: application, desc: 'Pragmatic capability deployment' },
+              { label: 'Confidence', val: confidence, desc: 'Self-assured decision capability' }
             ].map(d => (
               <div key={d.label} className="space-y-1.5">
                 <div className="flex justify-between items-baseline text-xs font-bold text-textPrimary">
@@ -148,16 +171,19 @@ export default function SkillDetail() {
           <h2 className="text-xs font-bold uppercase tracking-wider text-textPrimary mb-6 align-self-start">Skill Radar</h2>
           <div className="w-56 h-56 relative">
             <svg viewBox="0 0 100 100" className="w-full h-full">
-              {/* Outer grid */}
-              <polygon points="50,10 84.6,30 84.6,70 50,90 15.4,70 15.4,30" fill="none" stroke="currentColor" className="text-border" strokeWidth="0.5" />
-              {/* Inner grids */}
-              <polygon points="50,20 76,35 76,65 50,80 24,65 24,35" fill="none" stroke="currentColor" className="text-border/40" strokeWidth="0.5" />
-              <polygon points="50,30 67.3,40 67.3,60 50,70 32.7,60 32.7,40" fill="none" stroke="currentColor" className="text-border/20" strokeWidth="0.5" />
+              {/* Radial Grids */}
+              <polygon points={getGridPoints(10)} fill="none" stroke="currentColor" className="text-border" strokeWidth="0.5" />
+              <polygon points={getGridPoints(7.5)} fill="none" stroke="currentColor" className="text-border/40" strokeWidth="0.5" />
+              <polygon points={getGridPoints(5)} fill="none" stroke="currentColor" className="text-border/25" strokeWidth="0.5" />
+              <polygon points={getGridPoints(2.5)} fill="none" stroke="currentColor" className="text-border/10" strokeWidth="0.5" />
               
               {/* Axes lines */}
-              <line x1="50" y1="50" x2="50" y2="10" stroke="currentColor" className="text-border" strokeWidth="0.5" />
-              <line x1="50" y1="50" x2="84.6" y2="70" stroke="currentColor" className="text-border" strokeWidth="0.5" />
-              <line x1="50" y1="50" x2="15.4" y2="70" stroke="currentColor" className="text-border" strokeWidth="0.5" />
+              {Array.from({ length: 7 }).map((_, i) => {
+                const pt = getPt(10, i).split(',')
+                return (
+                  <line key={i} x1="50" y1="50" x2={pt[0]} y2={pt[1]} stroke="currentColor" className="text-border" strokeWidth="0.5" />
+                )
+              })}
 
               {/* Data polygon */}
               <polygon
@@ -168,15 +194,46 @@ export default function SkillDetail() {
               />
 
               {/* Data points */}
-              <circle cx={getPt(speed, 0).split(',')[0]} cy={getPt(speed, 0).split(',')[1]} r="2" fill="#4F7CFF" />
-              <circle cx={getPt(quality, 120).split(',')[0]} cy={getPt(quality, 120).split(',')[1]} r="2" fill="#4F7CFF" />
-              <circle cx={getPt(consistency, 240).split(',')[0]} cy={getPt(consistency, 240).split(',')[1]} r="2" fill="#4F7CFF" />
-            </svg>
+              {[
+                { val: speed, idx: 0 },
+                { val: quality, idx: 1 },
+                { val: consistency, idx: 2 },
+                { val: depth, idx: 3 },
+                { val: retention, idx: 4 },
+                { val: application, idx: 5 },
+                { val: confidence, idx: 6 }
+              ].map((d) => {
+                const pt = getPt(d.val, d.idx).split(',')
+                return (
+                  <circle key={d.idx} cx={pt[0]} cy={pt[1]} r="2" fill="#4F7CFF" />
+                )
+              })}
 
-            {/* Labels overlay */}
-            <div className="absolute top-1 left-1/2 -translate-x-1/2 text-[9px] font-bold text-textPrimary uppercase">Speed</div>
-            <div className="absolute bottom-6 right-2 text-[9px] font-bold text-textPrimary uppercase">Quality</div>
-            <div className="absolute bottom-6 left-2 text-[9px] font-bold text-textPrimary uppercase">Consistency</div>
+              {/* Axis labels */}
+              {[
+                { label: 'SPD', idx: 0 },
+                { label: 'QLT', idx: 1 },
+                { label: 'CNS', idx: 2 },
+                { label: 'DPT', idx: 3 },
+                { label: 'RTN', idx: 4 },
+                { label: 'APL', idx: 5 },
+                { label: 'CFD', idx: 6 }
+              ].map((d) => {
+                const pt = getPt(11.5, d.idx).split(',')
+                return (
+                  <text
+                    key={d.label}
+                    x={pt[0]}
+                    y={pt[1]}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="text-[5px] font-extrabold fill-textSecondary uppercase"
+                  >
+                    {d.label}
+                  </text>
+                )
+              })}
+            </svg>
           </div>
         </div>
 
@@ -247,50 +304,30 @@ export default function SkillDetail() {
       <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Log Skill Entry">
         <form onSubmit={handleLogSubmit} className="space-y-4">
           
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-baseline text-xs font-bold text-textPrimary">
-              <span>Speed Parameter</span>
-              <span>{speed}/10</span>
+          {[
+            { label: 'Speed', val: speed, setVal: setSpeed, accent: 'accent-primary' },
+            { label: 'Quality', val: quality, setVal: setQuality, accent: 'accent-secondary' },
+            { label: 'Consistency', val: consistency, setVal: setConsistency, accent: 'accent-success' },
+            { label: 'Depth', val: depth, setVal: setDepth, accent: 'accent-warning' },
+            { label: 'Retention', val: retention, setVal: setRetention, accent: 'accent-accent' },
+            { label: 'Application', val: application, setVal: setApplication, accent: 'accent-info' },
+            { label: 'Confidence', val: confidence, setVal: setConfidence, accent: 'accent-primary' }
+          ].map((slider) => (
+            <div key={slider.label} className="space-y-1.5">
+              <div className="flex justify-between items-baseline text-xs font-bold text-textPrimary">
+                <span>{slider.label} Parameter</span>
+                <span>{slider.val}/10</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={slider.val}
+                onChange={e => slider.setVal(Number(e.target.value))}
+                className={`w-full h-1.5 bg-background dark:bg-border/60 rounded-full appearance-none cursor-pointer ${slider.accent}`}
+              />
             </div>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={speed}
-              onChange={e => setSpeed(Number(e.target.value))}
-              className="w-full h-1.5 bg-background dark:bg-border/60 rounded-full appearance-none cursor-pointer accent-primary"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-baseline text-xs font-bold text-textPrimary">
-              <span>Quality Parameter</span>
-              <span>{quality}/10</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={quality}
-              onChange={e => setQuality(Number(e.target.value))}
-              className="w-full h-1.5 bg-background dark:bg-border/60 rounded-full appearance-none cursor-pointer accent-secondary"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-baseline text-xs font-bold text-textPrimary">
-              <span>Consistency Parameter</span>
-              <span>{consistency}/10</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={consistency}
-              onChange={e => setConsistency(Number(e.target.value))}
-              className="w-full h-1.5 bg-background dark:bg-border/60 rounded-full appearance-none cursor-pointer accent-success"
-            />
-          </div>
+          ))}
 
           <div className="space-y-1.5">
             <label className="block text-[10px] uppercase font-bold tracking-wider text-textSecondary">Notes / Reflections</label>

@@ -88,3 +88,25 @@ export function useCompleteDeepWorkMutation() {
     },
   });
 }
+
+export function useUpdateDeepWorkMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: {
+        output?: string;
+        goalId?: string;
+        plannedDurationMinutes?: number;
+        interruptions?: number;
+      };
+    }) => deepWorkService.updateSession(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activeDeepWorkSession'] });
+    },
+  });
+}

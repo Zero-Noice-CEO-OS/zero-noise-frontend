@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Play, Pause, Square, Award, Flame, Hourglass, Expand, Shrink, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Modal from '@/components/Modal'
-import { useActiveSession, useDeepWorkAnalytics, useDeepWorkHistory, useStartDeepWorkMutation, usePauseDeepWorkMutation, useResumeDeepWorkMutation, useCompleteDeepWorkMutation } from '@/hooks/useDeepWork'
+import { useActiveSession, useDeepWorkAnalytics, useDeepWorkHistory, useStartDeepWorkMutation, usePauseDeepWorkMutation, useResumeDeepWorkMutation, useCompleteDeepWorkMutation, useUpdateDeepWorkMutation } from '@/hooks/useDeepWork'
 import { useGoals } from '@/hooks/useGoals'
 import Link from 'next/link'
 
@@ -34,11 +34,13 @@ export default function DeepWork() {
   const pauseMutation = usePauseDeepWorkMutation()
   const resumeMutation = useResumeDeepWorkMutation()
   const completeMutation = useCompleteDeepWorkMutation()
+  const updateMutation = useUpdateDeepWorkMutation()
 
   // Track active session changes and sync timer state
   useEffect(() => {
     if (activeSessionQuery.data) {
       const session = activeSessionQuery.data;
+      setInterruptions(session.interruptions || 0);
       const plannedSeconds = (session.plannedDurationMinutes || 50) * 60;
       if (session.status === 'ACTIVE') {
         const startTime = new Date(session.startedAt).getTime();
@@ -141,6 +143,21 @@ export default function DeepWork() {
         setRunning(false)
         setInterruptions(0)
         setOutputNotes('')
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }
+
+  const handleLogInterruption = async () => {
+    if (activeSessionQuery.data) {
+      const nextVal = interruptions + 1
+      setInterruptions(nextVal)
+      try {
+        await updateMutation.mutateAsync({
+          id: activeSessionQuery.data.id,
+          data: { interruptions: nextVal }
+        })
       } catch (e) {
         console.error(e)
       }
@@ -288,6 +305,13 @@ export default function DeepWork() {
                 <Pause size={16} strokeWidth={2.2} /> Pause
               </button>
             )}
+            <button
+              onClick={handleLogInterruption}
+              disabled={updateMutation.isPending}
+              className="px-5 py-3 rounded-button bg-accent text-white text-sm font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-md"
+            >
+              ⚠️ Log Interruption
+            </button>
             <button
               onClick={handleStopClick}
               className="px-5 py-3 rounded-button bg-danger text-white text-sm font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-md"
@@ -444,6 +468,11 @@ export default function DeepWork() {
                   <div>
                     <p className="font-bold text-textPrimary text-xs sm:text-sm">{startFormatted} - {endFormatted}</p>
                     <p className="text-xs text-textSecondary mt-0.5">{s.output || 'No output details.'}</p>
+                    {s.interruptions > 0 && (
+                      <p className="text-[10px] text-danger/80 font-bold mt-1">
+                        ⚠️ {s.interruptions} {s.interruptions === 1 ? 'interruption' : 'interruptions'} recorded
+                      </p>
+                    )}
                   </div>
                   <span className="text-[10px] font-bold text-accent bg-accent/10 px-3 py-1 rounded-full self-start sm:self-center">
                     {s.actualDurationMinutes || s.plannedDurationMinutes || 0} min
