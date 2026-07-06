@@ -169,9 +169,11 @@ export default function Goals() {
                           {goal.level}
                         </span>
                         <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border ${
-                          goal.status === 'Completed'
+                          goal.status === 'Completed' || goal.status === 'On Track'
                             ? 'bg-success/10 text-success border-success/20'
-                            : 'bg-warning/10 text-warning border-warning/20'
+                            : goal.status === 'At Risk'
+                            ? 'bg-warning/10 text-warning border-warning/20'
+                            : 'bg-danger/10 text-danger border-danger/20'
                         }`}>
                           {goal.status}
                         </span>

@@ -168,8 +168,16 @@ export default function GoalDetail() {
         {/* Pace Status */}
         <div className="bg-surface/50 border border-border rounded-card p-5 shadow-card flex flex-col justify-between">
           <span className="text-[10px] font-extrabold uppercase text-textSecondary block">Days behind pace</span>
-          <p className="text-xl font-black text-textPrimary mt-2">0 days</p>
-          <span className="text-[9px] text-success font-bold">On schedule</span>
+          <p className={`text-xl font-black mt-2 ${
+            goal.status === 'Behind Schedule' || goal.status === 'At Risk' || goal.status === 'Overdue'
+              ? 'text-danger'
+              : 'text-success'
+          }`}>{goal.pace}</p>
+          <span className={`text-[9px] font-bold ${
+            goal.status === 'Behind Schedule' || goal.status === 'At Risk' || goal.status === 'Overdue'
+              ? 'text-danger'
+              : 'text-success'
+          }`}>● {goal.status}</span>
         </div>
       </div>
 
@@ -410,6 +418,48 @@ export default function GoalDetail() {
                 <span className="text-textPrimary font-semibold leading-relaxed">
                   {goal.nextAction || 'Identify execution strategy.'}
                 </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Goal Health */}
+          <div className="bg-surface/50 border border-border rounded-card p-5 shadow-card space-y-4">
+            <div className="flex items-center gap-2 border-b border-border/40 pb-2">
+              <TrendingUp size={15} className="text-success" />
+              <h3 className="text-xs font-bold text-textPrimary uppercase tracking-wider">Goal Health</h3>
+            </div>
+            <div className="space-y-3 pt-1 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-textSecondary">Progress vs Plan</span>
+                <span className={`font-semibold ${
+                  goal.status === 'Behind Schedule' || goal.status === 'At Risk' || goal.status === 'Overdue'
+                    ? 'text-danger'
+                    : 'text-success'
+                }`}>{goal.pace}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-textSecondary">Trend</span>
+                <span className="font-semibold text-success">Increasing ↗</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-textSecondary">Confidence</span>
+                <span className="font-semibold text-success">High</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-textSecondary">Risk of Missing Target</span>
+                <span className={`font-semibold ${
+                  goal.status === 'Behind Schedule' || goal.status === 'Overdue'
+                    ? 'text-danger'
+                    : goal.status === 'At Risk'
+                    ? 'text-warning'
+                    : 'text-success'
+                }`}>{
+                  goal.status === 'Behind Schedule' || goal.status === 'Overdue'
+                    ? 'High'
+                    : goal.status === 'At Risk'
+                    ? 'Medium'
+                    : 'Low'
+                }</span>
               </div>
             </div>
           </div>

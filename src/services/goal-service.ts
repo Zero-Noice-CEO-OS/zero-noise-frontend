@@ -23,6 +23,8 @@ export interface Goal {
   timeline?: any[];
   recentUpdates?: any[];
   aiInsight?: string;
+  pace?: string;
+  daysBehind?: number;
 }
 
 export interface PaginatedGoals {
