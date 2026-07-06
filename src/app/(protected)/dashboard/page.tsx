@@ -339,7 +339,7 @@ export default function Dashboard() {
                       <p className="text-[10px] text-textSecondary">Energy: {todayOverview.morningCheckIn.energy}/10 • Skill Focus: {todayOverview.morningCheckIn.mainSkill || 'None'}</p>
                     </div>
                   </div>
-                  {summary?.topPriorities?.map((priority: string, idx: number) => (
+                  {Array.isArray(summary?.topPriorities) && summary.topPriorities.map((priority: string, idx: number) => (
                     <div key={idx} className="flex gap-4 items-start">
                       <span className="text-[10px] font-bold text-textSecondary w-14 shrink-0 mt-0.5">Priority #{idx + 1}</span>
                       <div className="flex-1 pl-3 border-l-2 border-accent/20">
@@ -352,7 +352,7 @@ export default function Dashboard() {
               ) : (
                 <div className="py-8 text-center space-y-3">
                   <p className="text-xs text-textSecondary font-semibold">Morning check-in is pending.</p>
-                  <Link href="/reviews/daily" className="inline-block px-3 py-1.5 text-[10px] font-bold text-white bg-primary rounded-button shadow-sm">
+                  <Link href="/reviews" className="inline-block px-3 py-1.5 text-[10px] font-bold text-white bg-primary rounded-button shadow-sm">
                     Complete Check-in
                   </Link>
                 </div>

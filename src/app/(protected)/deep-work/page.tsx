@@ -423,7 +423,7 @@ export default function DeepWork() {
         <h2 className="text-sm font-extrabold text-textPrimary mb-4">Focus Log History</h2>
         {historyQuery.isLoading ? (
           <div className="p-8 text-center text-xs text-textSecondary font-bold">Syncing history logs...</div>
-        ) : !historyQuery.data?.data || historyQuery.data.data.length === 0 ? (
+        ) : !Array.isArray(historyQuery.data?.data) || historyQuery.data.data.length === 0 ? (
           <p className="text-xs text-textSecondary italic text-center py-4">No completed focus sessions found.</p>
         ) : (
           <div className="space-y-4">

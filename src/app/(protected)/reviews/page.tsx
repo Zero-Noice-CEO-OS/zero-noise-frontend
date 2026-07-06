@@ -282,7 +282,7 @@ export default function ReviewsHub() {
                   <p className="text-textPrimary font-semibold">⚡ Main Skill Focus: <span className="text-primary">{todayLogQuery.data.mainSkill}</span></p>
                   <div className="space-y-1">
                     <p className="font-bold text-textSecondary text-[9px] tracking-wider">PRIORITIES:</p>
-                    {(todayLogQuery.data.topPriorities as string[]).map((p, idx) => (
+                    {Array.isArray(todayLogQuery.data.topPriorities) && (todayLogQuery.data.topPriorities as string[]).map((p, idx) => (
                       <p key={idx} className="text-textSecondary">• {p}</p>
                     ))}
                   </div>

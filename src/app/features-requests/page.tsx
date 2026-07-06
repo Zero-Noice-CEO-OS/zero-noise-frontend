@@ -28,10 +28,12 @@ export default function FeatureRequestsPage() {
   const loadRequests = async () => {
     try {
       const { apiClient } = require('@/services/api-client')
-      const data = await apiClient.get('/auth/features-requests')
-      setRequests(data)
+      const response = await apiClient.get('/auth/features-requests')
+      const data = response?.data
+      setRequests(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error(err)
+      setRequests([])
     }
   }
 
@@ -45,8 +47,11 @@ export default function FeatureRequestsPage() {
     setLoading(true)
     try {
       const { apiClient } = require('@/services/api-client')
-      const newReq = await apiClient.post('/auth/features-requests', { title, description })
-      setRequests((prev) => [newReq, ...prev])
+      const response = await apiClient.post('/auth/features-requests', { title, description })
+      const newReq = response?.data
+      if (newReq) {
+        setRequests((prev) => [newReq, ...(Array.isArray(prev) ? prev : [])])
+      }
       setTitle('')
       setDescription('')
     } catch (err) {
@@ -60,19 +65,21 @@ export default function FeatureRequestsPage() {
     try {
       const { apiClient } = require('@/services/api-client')
       await apiClient.post(`/auth/features-requests/${id}/vote`)
-      setRequests((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, votes: r.votes + 1 } : r))
-      )
+      setRequests((prev) => {
+        const arr = Array.isArray(prev) ? prev : []
+        return arr.map((r) => (r && r.id === id ? { ...r, votes: (r.votes || 0) + 1 } : r))
+      })
     } catch (err) {
       console.error(err)
     }
   }
 
-  const filteredRequests = requests
-    .filter((r) => filterStatus === 'All' || r.status === filterStatus)
+  const arrRequests = Array.isArray(requests) ? requests : []
+  const filteredRequests = arrRequests
+    .filter((r) => r && (filterStatus === 'All' || r.status === filterStatus))
     .sort((a, b) => {
-      if (sortBy === 'popular') return b.votes - a.votes
-      return b.id.localeCompare(a.id) // Fallback sorting
+      if (sortBy === 'popular') return (b.votes || 0) - (a.votes || 0)
+      return (b.id || '').localeCompare(a.id || '')
     })
 
   const getStatusBadgeClass = (status: string) => {
@@ -80,6 +87,9 @@ export default function FeatureRequestsPage() {
     if (status === 'In Progress') return 'bg-[#7B5CFF]/15 text-[#7B5CFF] border-[#7B5CFF]/20'
     return 'bg-success/15 text-success border-success/20'
   }
+
+  const staticFilters = ['All', 'Planned', 'In Progress', 'Completed']
+  const arrFiltered = Array.isArray(filteredRequests) ? filteredRequests : []
 
   return (
     <PageShell
@@ -134,7 +144,7 @@ export default function FeatureRequestsPage() {
         <div className="lg:col-span-2 space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-4">
             <div className="flex gap-2">
-              {['All', 'Planned', 'In Progress', 'Completed'].map((st) => (
+              {staticFilters.map((st) => (
                 <button
                   key={st}
                   onClick={() => setFilterStatus(st)}
@@ -163,12 +173,12 @@ export default function FeatureRequestsPage() {
           </div>
 
           <div className="space-y-4">
-            {filteredRequests.length === 0 ? (
+            {arrFiltered.length === 0 ? (
               <div className="text-center py-16 border border-white/5 rounded-2xl bg-white/5 text-xs text-[#A6B0CF]/40">
                 No feature requests found matching filters. Be the first to suggest one!
               </div>
             ) : (
-              filteredRequests.map((req) => (
+              arrFiltered.map((req) => (
                 <div
                   key={req.id}
                   className="p-5 bg-white/5 border border-white/5 rounded-2xl flex items-start justify-between gap-6 hover:border-white/10 transition-all"

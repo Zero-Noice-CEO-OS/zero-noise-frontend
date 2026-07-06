@@ -67,27 +67,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
     const initAuth = async () => {
-      const hasToken = typeof window !== 'undefined' && localStorage.getItem('has_token') === 'true';
-      if (!hasToken) {
-        if (active) {
-          setIsLoading(false);
-          setAuthReady(true);
-        }
-        return;
-      }
-
       try {
+        console.log('[Auth] Starting session initialization...');
         const refreshRes = await authService.refresh();
+        console.log('[Auth] Refresh successful.');
         if (active) {
           setAccessToken(refreshRes.accessToken);
           const meRes = await apiClient.get<User>('/users/me');
           setUserState(meRes.data);
+          console.log('[Auth] Session restored.');
         }
-      } catch (err) {
-        console.error('Failed to initialize session', err);
+      } catch (err: any) {
         if (active) {
           setAccessToken(null);
           setUserState(null);
+        }
+
+        const status = err?.response?.status;
+        const errorMessage = err?.response?.data?.message || err?.message || '';
+
+        const isNormalUnauthenticated =
+          status === 400 ||
+          status === 401 ||
+          errorMessage.includes('NO_REFRESH_TOKEN') ||
+          err === 'NO_REFRESH_TOKEN';
+
+        if (isNormalUnauthenticated) {
+          console.log('[Auth] No existing session found.');
+        } else {
+          console.error('Failed to initialize session', err);
         }
       } finally {
         if (active) {

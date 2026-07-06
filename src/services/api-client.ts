@@ -45,7 +45,6 @@ export const executeRefreshToken = async (): Promise<{ accessToken: string }> =>
 
   refreshPromise = (async () => {
     try {
-      console.log('[Auth] Initiating single startup token refresh...');
       const response = await axios.post(
         `${API_BASE_URL}/auth/refresh`,
         {},
